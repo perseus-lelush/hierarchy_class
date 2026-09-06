@@ -13,6 +13,7 @@ import { useOnline } from "@/lib/useOnline";
 import { OfflineBanner } from "@/components/ui/OfflineBanner";
 import { registerBackHandler } from "@/lib/nativeBackHandler";
 import { useCallStore } from "@/lib/callStore";
+import { InlineLoader } from "@/components/ui/Loading";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -406,7 +407,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
 
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <p className="p-4 text-sm text-muted">Loading conversations...</p>
+            <InlineLoader label="Loading conversations..." className="py-8" />
           ) : error ? (
             <p className="p-4 text-sm text-warn">{error}</p>
           ) : showingPeople ? (
@@ -669,7 +670,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-5">
               {actionError && <p className="rounded-[10px] border border-warn-soft bg-warn-soft px-3 py-2 text-xs text-warn">{actionError}</p>}
               {active.messagesLoading ? (
-                <p className="text-center text-sm text-muted">Loading messages...</p>
+                <InlineLoader label="Loading messages..." className="py-10" />
               ) : active.messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
                   <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent-token">
@@ -778,7 +779,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
             {peopleLoading ? (
-              <p className="text-sm text-muted">Loading directory...</p>
+              <InlineLoader label="Loading directory..." />
             ) : (
               <>
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent-token">

@@ -10,6 +10,7 @@ import { useRankStore, type StudentRankInfo } from "@/lib/rankStore";
 import { isNativeApp } from "@/lib/native";
 import { useSchools } from "@/lib/useSchools";
 import type { ProfileRow } from "@/types/supabase";
+import { InlineLoader } from "@/components/ui/Loading";
 
 /**
  * Filter chip row. `compact` (Android) keeps the chips smaller so the filter
@@ -284,7 +285,7 @@ export default function LeaderboardPage() {
         </CornerFrame>
 
         <div className="space-y-3">
-          {loading && <p className="text-sm text-muted">Loading rankings...</p>}
+          {loading && <InlineLoader label="Loading rankings..." />}
           {ranksError && <p className="text-sm text-warn">{ranksError}</p>}
           {!loading && !ranksError && entries.length === 0 && (
             <p className="text-sm text-muted">No ranked students yet.</p>

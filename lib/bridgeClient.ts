@@ -13,6 +13,7 @@
  */
 
 import { backendUrl } from "@/lib/siteUrl";
+import { createClient } from "@/lib/supabase/client";
 import type { SignUpInput, SignUpResult } from "@/lib/server/authOps";
 
 /**
@@ -47,6 +48,11 @@ type DeletionResult =
  * object for transport failures (offline, non-JSON, unexpected status) so
  * callers always receive their documented result shape.
  *
+ * The caller's Supabase access token is forwarded in an Authorization
+ * header: the standalone Android app has no backend cookies, so account
+ * routes (deactivate, deletion requests, appeals...) authenticate via the
+ * forwarded JWT (lib/server/accountOps.createSessionClient honors it).
+ *
  * Error fidelity: a 429 carries a real, user-actionable message ("Too many
  * signup attempts") - it is surfaced verbatim instead of a generic string.
  * The offline message is reserved for genuine transport failures (the fetch
@@ -57,9 +63,18 @@ type DeletionResult =
 async function postBridge<T>(path: string, body?: unknown): Promise<T | OpError> {
   let res: Response;
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) headers.Authorization = `Bearer ${token}`;
+    } catch {
+      // No session (e.g. signup) - proceed without the header.
+    }
     res = await fetch(backendUrl(path), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body ?? {}),
     });
   } catch {

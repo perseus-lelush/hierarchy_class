@@ -188,12 +188,12 @@ export default function TermsPage() {
         <p>
           Questions about these terms can be directed to the project maintainer at{" "}
           <a
-            href="https://github.com/joshan-lucmayan"
+            href="https://github.com/perseus-lelush"
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold text-[var(--accent)] underline underline-offset-2"
           >
-            github.com/joshan-lucmayan
+            github.com/perseus-lelush
           </a>
           .
         </p>

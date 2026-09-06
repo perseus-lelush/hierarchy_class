@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ViewStudentProfile } from "@/components/student/ViewStudentProfile";
+import { InlineLoader } from "@/components/ui/Loading";
 
 /**
  * Static-routable "view another person's profile" page used by ALL internal
@@ -17,7 +18,7 @@ export default function ProfileViewPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-20">
-          <p className="text-sm text-muted">Loading profile...</p>
+          <InlineLoader label="Loading profile..." />
         </div>
       }
     >

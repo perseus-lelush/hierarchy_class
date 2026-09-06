@@ -6,6 +6,7 @@ import { SHOP_ENABLED, SHOP_DISABLED_MESSAGE } from "@/lib/shopConfig";
 import { CoinIcon } from "@/components/ui/CoinIcon";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { PaymentHistory } from "@/components/student/PaymentHistory";
+import { InlineLoader } from "@/components/ui/Loading";
 
 function ActionButton({ item, owned, busy, onBuy }: { item: ShopItem; owned: boolean; busy: boolean; onBuy: () => void }) {
   if (!owned) {
@@ -138,7 +139,7 @@ export default function ShopPage() {
       )}
 
       {SHOP_ENABLED && (loading ? (
-        <p className="text-sm text-muted">Loading the shop...</p>
+        <InlineLoader label="Loading the shop..." />
       ) : error ? (
         <p className="text-sm text-warn">{error}</p>
       ) : items.length === 0 ? (

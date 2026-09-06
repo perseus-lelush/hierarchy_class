@@ -6,6 +6,7 @@ import { useFriendsStore, type Friend } from "@/lib/friendsStore";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { InlineLoader } from "@/components/ui/Loading";
 
 /**
  * "See All" friends view for the student profile - doubles as the FRIEND
@@ -41,7 +42,7 @@ export function FriendsModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal eyebrow="Friends" description="Everyone you're connected with" onClose={onClose} ariaLabel="Friends">
       {loading ? (
-        <p className="mt-4 text-sm text-muted">Loading friends...</p>
+        <InlineLoader label="Loading friends..." className="py-6" />
       ) : error ? (
         <p className="mt-4 text-sm text-warn">{error}</p>
       ) : friends.length === 0 ? (

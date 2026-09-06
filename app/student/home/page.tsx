@@ -10,6 +10,7 @@ import HabitTracker from "@/components/dashboard/HabitTracker";
 import WeeklyProgress from "@/components/dashboard/WeeklyProgress";
 import SubjectStats from "@/components/dashboard/SubjectStats";
 import WeakestSubjectCard from "@/components/dashboard/WeakestSubjectCard";
+import { InlineLoader } from "@/components/ui/Loading";
 
 export default function StudentHomePage() {
   const { posts, loading: feedLoading, error: feedError } = useSchoolFeed();
@@ -38,7 +39,7 @@ export default function StudentHomePage() {
       <div className="grid gap-4 sm:gap-5 xl:grid-cols-[1.6fr_1fr]">
         <section className="space-y-4">
           {feedLoading ? (
-            <p className="text-sm text-muted">Loading announcements...</p>
+            <InlineLoader label="Loading announcements..." />
           ) : feedError ? (
             <p className="text-sm text-warn">{feedError}</p>
           ) : posts.length === 0 ? (

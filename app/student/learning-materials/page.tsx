@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMaterials } from "@/lib/materialsStore";
+import { InlineLoader } from "@/components/ui/Loading";
 
 export default function LearningMaterialsPage() {
   const { materials, loading, error } = useMaterials();
@@ -58,7 +59,7 @@ export default function LearningMaterialsPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted">Loading materials...</p>
+        <InlineLoader label="Loading materials..." />
       ) : error ? (
         <p className="text-sm text-warn">{error}</p>
       ) : filtered.length === 0 ? (

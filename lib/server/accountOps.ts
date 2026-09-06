@@ -10,7 +10,8 @@
  */
 
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
+import { cookies, headers } from "next/headers";
 import type { Database, ProfileRow, AccountRequestRow, AccountAppealRow } from "@/types/supabase";
 import { createServiceClient } from "@/lib/supabase/serviceClient";
 import { storagePathFromUrl } from "@/lib/uploadUtils";
@@ -47,6 +48,18 @@ async function createSessionClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return null;
+
+  // Android (Capacitor) bridge calls carry the device's Supabase access
+  // token in an Authorization header - the WebView holds no cookies for the
+  // backend origin, so the cookie path can never work there. When present,
+  // the JWT is forwarded to PostgREST on every query, so RLS runs as that
+  // user exactly like the cookie session would.
+  const authHeader = (await headers()).get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return createClient<Database>(url, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+  }
 
   const cookieStore = await cookies();
   return createServerClient<Database>(url, anonKey, {

@@ -46,6 +46,8 @@ export interface ProfileRow {
   friends_private: boolean;
   /** User privacy: hides this student's rank history from other students. */
   history_private: boolean;
+  /** Last self-service display-name change (renames limited to 1 per 30 days). */
+  name_changed_at: string | null;
   deactivated_at: string | null;
   /** Set by a school admin to temporarily restrict a suspicious account.
    *  Distinct from deactivated_at (self-service). Restricted users can only

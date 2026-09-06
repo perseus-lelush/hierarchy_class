@@ -9,6 +9,7 @@ import { useRankStore } from "@/lib/rankStore";
 import { RankBadge } from "@/components/ui/RankBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { ProfileRow } from "@/types/supabase";
+import { InlineLoader } from "@/components/ui/Loading";
 
 export default function SearchPage() {
   return (
@@ -162,7 +163,7 @@ function SearchPageInner() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading directory...</p>
+        <InlineLoader label="Loading directory..." />
       ) : !hasResults ? (
         <p className="text-sm text-muted">No matching profiles found.</p>
       ) : (

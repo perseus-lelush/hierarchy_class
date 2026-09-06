@@ -32,6 +32,7 @@ import { Achievements } from "@/components/profile/Achievements";
 import { FriendActionButton } from "@/components/profile/FriendActionButton";
 import { IconArchive, IconEye, IconLock } from "@/components/ui/icons";
 import type { ProfileRow } from "@/types/supabase";
+import { InlineLoader } from "@/components/ui/Loading";
 
 export function ViewStudentProfile({ profileId }: { profileId: string }) {
   const router = useRouter();
@@ -92,7 +93,7 @@ export function ViewStudentProfile({ profileId }: { profileId: string }) {
   if (loading || meLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-muted">Loading profile...</p>
+        <InlineLoader label="Loading profile..." />
       </div>
     );
   }

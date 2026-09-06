@@ -21,9 +21,12 @@ interface UseMyProfileResult {
         | "profile_private"
         | "friends_private"
         | "history_private"
+        | "first_name"
+        | "middle_name"
+        | "last_name"
       >
     >
-  ) => Promise<void>;
+  ) => Promise<string | null>;
   uploadAvatar: (file: File) => Promise<void>;
   removeAvatar: () => Promise<void>;
 }
@@ -124,13 +127,23 @@ export function useMyProfile(): UseMyProfileResult {
           | "profile_private"
           | "friends_private"
           | "history_private"
+          | "first_name"
+          | "middle_name"
+          | "last_name"
         >
       >
-    ) => {
-      if (!profile) return;
+    ): Promise<string | null> => {
+      if (!profile) return "You're not signed in.";
       const supabase = createClient();
-      await (supabase.from("profiles") as any).update(patch).eq("id", profile.id);
+      // DB guards surface as real messages (rename cooldown, protected
+      // fields) - return them so the UI can show the true reason.
+      const { error } = await (supabase.from("profiles") as any).update(patch).eq("id", profile.id);
+      if (error) {
+        console.error("[profile] update failed:", error.message);
+        return error.message;
+      }
       refetch();
+      return null;
     },
     [profile, refetch]
   );
