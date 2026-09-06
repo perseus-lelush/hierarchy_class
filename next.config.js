@@ -14,8 +14,12 @@ const isAndroidExport = process.env.CAPACITOR_EXPORT === "1";
 // Security headers for the web deployment (Vercel / Next server). The Android
 // export is a static bundle served by Capacitor's local asset server, which
 // does not emit these HTTP headers; they are a server concern and therefore
-// only configured for the web build (Next's headers() is ignored in output
-// "export", so we must not emit them in the Android build anyway).
+// only configured for the web build.
+//
+// Content-Security-Policy is NOT here: it is issued per request by
+// middleware.ts with a fresh nonce for inline scripts (script-src uses
+// 'nonce-...' + 'strict-dynamic' in production, never 'unsafe-inline' or
+// 'unsafe-eval'). Static headers cannot carry a per-request value.
 const securityHeaders = [
   {
     key: "X-Content-Type-Options",
@@ -29,32 +33,11 @@ const securityHeaders = [
     key: "Referrer-Policy",
     value: "strict-origin-when-cross-origin",
   },
-  {
-    // Content-Security-Policy. Inline scripts/styles stay enabled because
-    // Next.js emits its own inline hydration/bootstrap scripts and React
-    // style attributes; connect-src covers Supabase (REST + Realtime) and the
-    // app's own API. Frame/media/img sources cover the embedded content the
-    // app legitimately renders (music previews, stories, openlibrary covers).
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-      "object-src 'none'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' blob: https:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.resend.com https://api.paymongo.com https://openlibrary.org",
-      "frame-src https://www.youtube.com https://player.vimeo.com https://open.spotify.com https://w.soundcloud.com https://accounts.spotify.com",
-      "worker-src 'self' blob:",
-    ].join("; "),
-  },
 ];
 
 const nextConfig = {
+  // Don't advertise the framework / version in responses.
+  poweredByHeader: false,
   env: {
     NEXT_PUBLIC_APP_VERSION:
       process.env.VERCEL_GIT_COMMIT_SHA || `v${pkgVersion}`,

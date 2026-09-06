@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import { QuizProvider } from "@/lib/quizStore";
 import { ChatProvider } from "@/lib/chatStore";
@@ -59,11 +60,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The theme bootstrap script below is the only hand-written inline script;
+  // middleware issues a per-request nonce and Next.js automatically applies
+  // the CSP's nonce to its own inline scripts. In the Android static export
+  // (no middleware/server) the nonce is absent and the script is emitted
+  // without one - Capacitor's local file serving doesn't enforce a CSP.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en">
       <head>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
