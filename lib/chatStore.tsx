@@ -193,15 +193,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     async function loadAll() {
-      const [convRes, unreadRes, blockRes] = await Promise.all([
+      // PostgREST cannot reference an embedded table's column inside a
+      // top-level or() filter ("conversation_members.profile_id.eq.X" fails
+      // to parse), so group membership is resolved in its own query and the
+      // two result sets are merged.
+      const [convRes, groupIdsRes, unreadRes, blockRes] = await Promise.all([
         supabase
           .from("conversations")
           .select(
-            "*, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role), members:conversation_members(profile_id, deleted_at, profiles(id, full_name, avatar_url, role))"
+            "*, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role)"
           )
-          .or(
-            `user_a_id.eq.${myProfileId},user_b_id.eq.${myProfileId},conversation_members.profile_id.eq.${myProfileId}`
-          ),
+          .or(`user_a_id.eq.${myProfileId},user_b_id.eq.${myProfileId}`),
+        supabase
+          .from("conversation_members")
+          .select("conversation_id")
+          .eq("profile_id", myProfileId),
         (supabase as any).rpc("get_unread_counts"),
         supabase.from("chat_blocks").select("blocked_id"),
       ]);
@@ -214,17 +220,43 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      let rows = ((convRes.data ?? []) as ConversationRow[]);
+      const groupIds = ((groupIdsRes.data ?? []) as { conversation_id: string }[]).map(
+        (r) => r.conversation_id
+      );
+      // Groups where I'm a member but not the user_a/user_b pair column.
+      const missingGroupIds = groupIds.filter(
+        (id) => !rows.some((r) => r.id === id)
+      );
+      if (missingGroupIds.length > 0) {
+        const { data: groupRows } = await supabase
+          .from("conversations")
+          .select(
+            "*, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role), members:conversation_members(profile_id, deleted_at, profiles(id, full_name, avatar_url, role))"
+          )
+          .in("id", missingGroupIds);
+        if (cancelled) return;
+        rows = [...rows, ...(((groupRows ?? []) as unknown) as ConversationRow[])];
+      }
+      // Groups always carry the members embed; ensure pair rows do not.
+      rows = rows.map((r) =>
+        r.is_group
+          ? { ...r, members: r.members ?? [] }
+          : r
+      );
+
       const unreadByConv: Record<string, number> = {};
       ((unreadRes.data ?? []) as any[]).forEach((u: any) => {
         unreadByConv[u.conversation_id] = Number(u.unread) || 0;
       });
 
-      const rows = ((convRes.data ?? []) as ConversationRow[]).filter((r) => isVisible(r, myProfileId));
-      rows.sort((a, b) =>
-        (b.last_message_at || b.last_message || "").localeCompare(a.last_message_at || a.last_message || "")
-      );
+      const visibleRows = rows
+        .filter((r) => isVisible(r, myProfileId))
+        .sort((a, b) =>
+          (b.last_message_at || b.last_message || "").localeCompare(a.last_message_at || a.last_message || "")
+        );
 
-      setConversations(rows.map((r) => toConversation(r, myProfileId, unreadByConv[r.id] ?? 0)));
+      setConversations(visibleRows.map((r) => toConversation(r, myProfileId, unreadByConv[r.id] ?? 0)));
       setBlocks(new Set(((blockRes.data ?? []) as any[]).map((b: any) => b.blocked_id)));
       setError(null);
       setLoading(false);
