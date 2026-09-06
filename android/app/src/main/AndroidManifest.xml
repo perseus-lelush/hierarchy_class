@@ -59,4 +59,9 @@
     <!-- In-app QR scanning (html5-qrcode uses the WebView camera via
          getUserMedia). No other device permissions are required. -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Beta voice calls: getUserMedia({audio:true}) inside the WebView
+         (WebRTC peer connection). Requested at call time, not install time. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 </manifest>

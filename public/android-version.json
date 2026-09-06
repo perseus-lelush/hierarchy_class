@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.28.0",
-  "versionCode": 128000,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.28.0.apk",
-  "releaseNotes": "New Messages experience (filters, new-chat dialog, design refresh) plus a major security update: Next.js 14.2.35 middleware-bypass fix (CVE-2025-29927), strict CSP with per-request nonces, signup anti-enumeration, and cross-instance rate limiting.",
+  "latestVersion": "1.29.0",
+  "versionCode": 129000,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.29.0.apk",
+  "releaseNotes": "Beta update: group chats, 1:1 voice calls, pull-to-refresh, friend management with confirmations, profile privacy (profile, friends, history), fixed profile messaging on mobile, and a beta badge. Shop is temporarily coming-soon.",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }

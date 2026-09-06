@@ -18,12 +18,12 @@ test("APK release metadata matches the distributed artifact contract", () => {
     cmp <= 0,
     `APK version ${APK_RELEASE.version} must not be newer than package.json ${pkgVersion}`
   );
-  assert.equal(APK_RELEASE.versionCode, 128000);
-  assert.equal(APK_RELEASE.sizeBytes, 7693760);
+  assert.equal(APK_RELEASE.versionCode, 129000);
+  assert.equal(APK_RELEASE.sizeBytes, 7723953);
 });
 
 test("download URL is versioned and served from the public downloads path", () => {
-  assert.equal(apkDownloadUrl(), `/downloads/hierarchy-class-v1.28.0.apk`);
+  assert.equal(apkDownloadUrl(), `/downloads/hierarchy-class-v1.29.0.apk`);
   assert.match(apkDownloadUrl(), /^\/downloads\/hierarchy-class-v\d+\.\d+\.\d+\.apk$/);
   assert.equal(APK_RELEASE.fileName, apkDownloadUrl().split("/").pop());
 });
@@ -33,5 +33,5 @@ test("checksum is a well-formed SHA-256 hex digest", () => {
 });
 
 test("size formatter renders MB with one decimal", () => {
-  assert.equal(formatApkSize(APK_RELEASE.sizeBytes), "7.3 MB");
+  assert.equal(formatApkSize(APK_RELEASE.sizeBytes), "7.4 MB");
 });
