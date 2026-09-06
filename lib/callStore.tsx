@@ -86,6 +86,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     }
     ringTimeoutRef.current && clearTimeout(ringTimeoutRef.current);
     durationTimerRef.current && clearInterval(durationTimerRef.current);
+    if (ringChannelRef.current) {
+      createClient().removeChannel(ringChannelRef.current);
+      ringChannelRef.current = null;
+    }
     pcRef.current?.getSenders().forEach((s) => s.track?.stop());
     pcRef.current?.close();
     pcRef.current = null;
@@ -158,6 +162,22 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     channel.on("broadcast", { event: "signal" }, ({ payload }) => {
       const data = payload as { kind: string; callId: string; [k: string]: unknown };
       if (data.callId !== callId) return;
+
+      // CALLER: the callee accepted - start negotiation by sending the offer.
+      // (Without this the call never progresses past "connecting".)
+      if (data.kind === "accept" && statusRef.current === "calling") {
+        void (async () => {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          setStatus("connecting");
+          channelRef.current?.send({
+            type: "broadcast",
+            event: "signal",
+            payload: { kind: "offer", callId, sdp: offer },
+          });
+        })().catch(() => fail("Couldn't connect the call."));
+        return;
+      }
 
       if (data.kind === "offer" && statusRef.current === "connecting") {
         void (async () => {
@@ -233,12 +253,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }, RING_TIMEOUT_MS);
 
       void (async () => {
-        const channel = await buildPeer(callId, channelId);
-        // Tell the callee which capability channel to join.
-        channel.send({
-          type: "broadcast",
-          event: "signal",
-          payload: { kind: "ring", callId, from: profile?.id, fromName: profile?.full_name, channelId },
+        // Build the capability channel + mic FIRST so accept can negotiate
+        // immediately, then ring the callee on THEIR personal channel - the
+        // callee has no way to know call:{callId} until the ring arrives.
+        await buildPeer(callId, channelId);
+        const supabase = createClient();
+        const ringChannel = supabase.channel(`call-user:${target.id}`);
+        ringChannelRef.current = ringChannel;
+        ringChannel.subscribe((state) => {
+          if (state !== "SUBSCRIBED") return;
+          ringChannel.send({
+            type: "broadcast",
+            event: "signal",
+            payload: { kind: "ring", callId, from: profile?.id, fromName: profile?.full_name, channelId },
+          });
         });
       })().catch(() => fail("Couldn't access your microphone."));
     },

@@ -59,8 +59,11 @@ interface ChatContextValue {
   markUnread: (conversationId: string) => Promise<void>;
   blockUser: (otherProfileId: string) => Promise<void>;
   unblockUser: (otherProfileId: string) => Promise<void>;
-  /** Creates a group chat and returns its conversation id (null on failure). */
-  createGroup: (title: string, memberIds: string[]) => Promise<string | null>;
+  /** Creates a group chat. Returns { id } on success, { error } on failure. */
+  createGroup: (
+    title: string,
+    memberIds: string[]
+  ) => Promise<{ id?: string; error?: string }>;
   /** Group owner adds members. Resolves an error string or null. */
   addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<string | null>;
   /** Any member can leave a group. Resolves an error string or null. */
@@ -619,8 +622,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const createGroup = useCallback(
-    async (title: string, memberIds: string[]): Promise<string | null> => {
-      if (!profile) return null;
+    async (
+      title: string,
+      memberIds: string[]
+    ): Promise<{ id?: string; error?: string }> => {
+      if (!profile) return { error: "You're not signed in." };
       const supabase = createClient();
       const { data, error } = await (supabase as any).rpc("create_chat_group", {
         p_title: title,
@@ -628,10 +634,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       });
       if (error) {
         console.error("[chat] createGroup failed:", error.message);
-        return null;
+        return { error: error.message || "Couldn't create the group." };
       }
+      const id = (data as string) ?? null;
+      if (!id) return { error: "Couldn't create the group." };
       refetch();
-      return (data as string) ?? null;
+      return { id };
     },
     [profile, refetch]
   );

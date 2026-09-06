@@ -202,16 +202,16 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   async function handleCreateGroup() {
     const title = groupTitle.trim();
     if (!title || groupMemberIds.size === 0) return;
-    const id = await createGroup(title, [...groupMemberIds]);
-    if (id) {
+    const result = await createGroup(title, [...groupMemberIds]);
+    if (result.id) {
       setCreatingGroup(false);
       setGroupTitle("");
       setGroupMemberIds(new Set());
-      setActiveId(id);
+      setActiveId(result.id);
       setShowArchived(false);
-      await openConversation(id);
+      await openConversation(result.id);
     } else {
-      setActionError("Couldn't create the group. Check the name and members, then try again.");
+      setActionError(`Couldn't create the group: ${result.error ?? "unknown error"}`);
     }
   }
 
@@ -337,15 +337,6 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setSegment(showArchived ? "all" : "archived")}
-              className={`hidden rounded-full px-3 py-1 text-[11px] font-semibold transition md:block ${
-                showArchived ? "bg-[var(--surface-strong)] text-navy" : "text-muted hover:bg-[var(--surface-strong)] hover:text-navy"
-              }`}
-            >
-              {showArchived ? "Inbox" : `Archived${archivedConversations.length > 0 ? ` (${archivedConversations.length})` : ""}`}
-            </button>
-            <button
-              type="button"
               onClick={() => setNewChatOpen(true)}
               aria-label="New chat"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-[var(--surface-strong)] hover:text-navy"
@@ -355,26 +346,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 p-3 pb-2 max-[767px]:pt-4">
-          <div className="inline-flex items-center gap-0.5 rounded-full border border-base p-[3px]">
-            {(["all", "groups", "archived"] as const).map((seg) => (
-              <button
-                key={seg}
-                type="button"
-                onClick={() => setSegment(seg)}
-                className={`rounded-full px-3 py-[3px] text-[11px] capitalize transition ${
-                  segmentValue === seg
-                    ? "bg-[var(--surface-strong)] font-semibold text-navy"
-                    : "font-medium text-muted hover:text-navy"
-                }`}
-              >
-                {seg}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-3 pt-1">
+        <div className="p-3 pb-2">
           <div className="flex items-center gap-2 rounded-full border border-base bg-surface px-4 py-2">
             <SearchIcon className="h-5 w-5 shrink-0 text-muted" />
             <input
@@ -387,13 +359,29 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
         </div>
 
         {!showArchived && (
-          <div className="flex gap-2 px-4 pb-3">
-            {TYPE_FILTERS.map((f) => (
+          <div className="flex items-center gap-2 px-4 pb-3">
+            <div className="inline-flex items-center gap-0.5 rounded-full border border-base p-[3px]">
+              {(["all", "groups", "archived"] as const).map((seg) => (
+                <button
+                  key={seg}
+                  type="button"
+                  onClick={() => setSegment(seg)}
+                  className={`rounded-full px-3 py-[3px] text-[11px] capitalize transition ${
+                    segmentValue === seg
+                      ? "bg-[var(--surface-strong)] font-semibold text-navy"
+                      : "font-medium text-muted hover:text-navy"
+                  }`}
+                >
+                  {seg}
+                </button>
+              ))}
+            </div>
+            {TYPE_FILTERS.filter((f) => f.key !== "all").map((f) => (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => setTypeFilter(f.key)}
-                className={`flex-1 rounded-full px-3.5 py-2 text-xs font-semibold transition ${
+                className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
                   typeFilter === f.key
                     ? "bg-accent-token text-on-accent"
                     : "text-muted hover:bg-[var(--surface-strong)] hover:text-navy"
@@ -434,9 +422,9 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
           ) : filteredConversations.length === 0 ? (
             <p className="p-4 text-sm text-muted">
               {typeFilter === "groups"
-                ? "No group chats yet."
+                ? `No group chats yet - tap + and choose "New group" to make one.`
                 : showArchived
-                  ? "No archived conversations."
+                  ? `No archived conversations.${archivedConversations.length > 0 ? ` (${archivedConversations.length} hidden by filters)` : ""}`
                   : "No conversations yet - tap + to start chatting."}
             </p>
           ) : (
