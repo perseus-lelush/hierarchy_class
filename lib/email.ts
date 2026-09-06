@@ -39,15 +39,32 @@ export async function sendEmail({
 
   const fromAddress = from?.trim() ?? process.env.FEEDBACK_FROM_EMAIL?.trim() ?? DEFAULT_FROM;
 
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
+  const post = async (fromLine: string): Promise<Response> =>
+    fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: fromAddress, to: [to], subject, text }),
+      body: JSON.stringify({ from: fromLine, to: [to], subject, text }),
     });
+
+  try {
+    let res = await post(fromAddress);
+
+    // A 403 "domain is not verified" means the configured From domain has not
+    // been verified in Resend yet (one-time DNS setup). Rather than silently
+    // dropping the mail, retry once with Resend's sandbox sender - which can
+    // only deliver to the Resend account owner's own address, i.e. exactly
+    // the developer inbox this helper serves. Once the domain is verified the
+    // branded From line is used again with no code change.
+    if (res.status === 403 && fromAddress !== DEFAULT_FROM) {
+      const detail = await res.text().catch(() => "");
+      console.error(
+        `[email] From domain rejected (falling back to sandbox sender): ${detail}`
+      );
+      res = await post(DEFAULT_FROM);
+    }
 
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
