@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.31.2",
-  "versionCode": 131002,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.31.2.apk",
-  "releaseNotes": "Group cover photos now actually display - the saved cover renders in the conversation list and chat header (previously the upload saved but the UI still showed the default icon).",
+  "latestVersion": "1.31.3",
+  "versionCode": 131003,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.31.3.apk",
+  "releaseNotes": "Edit group cover photo now opens the image picker (the button was dead), duplicate + button and duplicate Groups filter removed from messaging.",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }

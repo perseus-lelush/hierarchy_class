@@ -382,20 +382,6 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                 </button>
               ))}
             </div>
-            {TYPE_FILTERS.filter((f) => f.key !== "all").map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setTypeFilter(f.key)}
-                className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
-                  typeFilter === f.key
-                    ? "bg-accent-token text-on-accent"
-                    : "text-muted hover:bg-[var(--surface-strong)] hover:text-navy"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
           </div>
         )}
 
@@ -467,16 +453,6 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
           )}
         </div>
 
-        {isMobile && !active && (
-          <button
-            type="button"
-            onClick={() => setNewChatOpen(true)}
-            aria-label="New chat"
-            className="absolute bottom-5 right-5 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-accent-token text-on-accent shadow-[0_8px_24px_rgba(0,0,0,0.2)] transition active:scale-95"
-          >
-            <PlusIcon className="h-6 w-6" />
-          </button>
-        )}
       </div>
 
       {/* Right column: conversation */}
@@ -1319,6 +1295,19 @@ function EditGroupDialog({
         }
       >
         <p className="text-base font-semibold text-navy">Edit group</p>
+
+        {/* Hidden file input - the tile's click opens this. */}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) pickCover(file);
+            e.target.value = "";
+          }}
+          className="hidden"
+        />
 
         {/* Penpot Group Identity: photo tile + name input */}
         <div className="flex items-center gap-3">
