@@ -54,6 +54,18 @@ export type SignUpResult =
   | { success: true; userId: string }
   | { success: false; error: string; fieldErrors?: SignupErrors };
 
+/**
+ * The single, byte-identical rejection for every "already exists" outcome
+ * (taken email / student ID / faculty ID). Revealing WHICH identifier is
+ * registered would let an attacker enumerate accounts, so every duplicate
+ * path returns this exact object - never a specific reason, never field
+ * errors. The real reason is logged server-side only.
+ */
+const ENUMERATION_SAFE_REJECTION: SignUpResult = {
+  success: false,
+  error: "If the account is eligible, a confirmation email has been sent.",
+};
+
 function siteRedirectBase(): { base: string; error: string | null } {
   const base = siteUrlBase();
   if (base) return { base, error: null };
@@ -130,6 +142,10 @@ export async function signUpWithProfile(input: SignUpInput): Promise<SignUpResul
   //    indexes on (school_id, student_id) / (school_id, faculty_id) are the
   //    real enforcement; this is for a clean error message. The check runs
   //    through the server-only client - never exposed to the browser).
+  //
+  //    Anti-enumeration: taken vs free identifiers must NOT change the HTTP
+  //    response (same body, same status). The specific reason is logged
+  //    server-side only; the client gets the one generic message.
   const ids = normalizeSignupIdentifiers(input);
   const svc = createServiceClient();
   if (svc && ids.studentId) {
@@ -140,11 +156,10 @@ export async function signUpWithProfile(input: SignUpInput): Promise<SignUpResul
       .eq("student_id", ids.studentId)
       .maybeSingle();
     if (existingStudent) {
-      return {
-        success: false,
-        error: "This student ID is already registered at your school.",
-        fieldErrors: { studentId: "Already registered." },
-      };
+      console.error("[signup] duplicate identifier (suppressed from response): student_id taken at school", {
+        schoolId: input.schoolId,
+      });
+      return ENUMERATION_SAFE_REJECTION;
     }
   }
   if (svc && ids.facultyId) {
@@ -155,11 +170,10 @@ export async function signUpWithProfile(input: SignUpInput): Promise<SignUpResul
       .eq("faculty_id", ids.facultyId)
       .maybeSingle();
     if (existingFaculty) {
-      return {
-        success: false,
-        error: "This faculty ID is already registered at your school.",
-        fieldErrors: { facultyId: "Already registered." },
-      };
+      console.error("[signup] duplicate identifier (suppressed from response): faculty_id taken at school", {
+        schoolId: input.schoolId,
+      });
+      return ENUMERATION_SAFE_REJECTION;
     }
   }
 
@@ -197,18 +211,12 @@ export async function signUpWithProfile(input: SignUpInput): Promise<SignUpResul
   if (signUpError || !authData.user) {
     const message = signUpError?.message || "Signup failed";
     console.error("[signup] supabase signUp failed:", message);
-    // The database unique indexes reject duplicate school IDs inside the
-    // trigger; surface that as a friendly field error.
-    if (/duplicate key|already registered/i.test(message)) {
-      const dupField = role === "student" ? "studentId" : "facultyId";
-      return {
-        success: false,
-        error: `This ${role === "student" ? "student" : "faculty"} ID is already registered at your school.`,
-        fieldErrors: { [dupField]: "Already registered." } as SignupErrors,
-      };
-    }
-    if (/already registered|user already/i.test(message)) {
-      return { success: false, error: "That email already has an account. Try signing in instead." };
+    // Anti-enumeration: duplicates (school ID indexes, already-registered
+    // email) return the same generic rejection as the pre-checks above -
+    // never a reason that reveals which identifier exists. Detailed reason
+    // stays in the server log.
+    if (/duplicate key|already registered|user already/i.test(message)) {
+      return ENUMERATION_SAFE_REJECTION;
     }
     // Never return provider-internal error strings to the client.
     return { success: false, error: "Signup failed. Please check your details and try again." };

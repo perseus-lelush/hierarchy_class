@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { MusicPlatform, ResolvedMusic } from "@/lib/musicTypes";
+import { enforceRateLimit } from "@/lib/server/rateLimit";
 
 // Music metadata resolution - post-music-by-link.
 //
@@ -26,32 +27,6 @@ import type { MusicPlatform, ResolvedMusic } from "@/lib/musicTypes";
 export type { MusicPlatform, ResolvedMusic } from "@/lib/musicTypes";
 
 const OEmbed_TIMEOUT_MS = 8000;
-
-// Per-IP rate limit: 30 resolves per minute. Keeps the open endpoint safe
-// from scripted hammering without ever requiring a login.
-const RATE_LIMIT = 30;
-const RATE_WINDOW_MS = 60_000;
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const bucket = rateBuckets.get(ip);
-  if (!bucket || bucket.resetAt <= now) {
-    // Periodically sweep expired buckets so the map cannot grow unbounded.
-    if (rateBuckets.size > 5_000) {
-      for (const [key, b] of rateBuckets) if (b.resetAt <= now) rateBuckets.delete(key);
-    }
-    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > RATE_LIMIT;
-}
-
-function clientIp(request: Request): string {
-  const fwd = request.headers.get("x-forwarded-for");
-  return fwd?.split(",")[0]?.trim() || "unknown";
-}
 
 function detectPlatform(host: string): MusicPlatform | null {
   const h = host.replace(/^www\./, "").replace(/^m\./, "");
@@ -146,8 +121,16 @@ function error(message: string, status: number) {
 }
 
 export async function POST(request: Request) {
-  if (isRateLimited(clientIp(request))) {
-    return error("Too many music lookups right now - try again in a minute.", 429);
+  // Per-IP rate limit: 30 resolves per minute, enforced cross-instance in
+  // Upstash Redis (lib/server/rateLimit.ts) so it survives cold starts and
+  // holds across concurrent instances. Keeps the open endpoint safe from
+  // scripted hammering without ever requiring a login.
+  const limit = await enforceRateLimit(request, "resolve-music", 30, 60);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many music lookups right now - try again in a minute." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
   }
 
   let body: { url?: unknown } = {};
