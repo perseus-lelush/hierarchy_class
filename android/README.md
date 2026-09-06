@@ -1,6 +1,6 @@
 # Android - Standalone App (Capacitor)
 
-> Package: `com.hierarchyclass.app` - `versionName 1.30.2` - `versionCode 130002` - **minSdk 24, target/compileSdk 36**
+> Package: `com.hierarchyclass.app` - `versionName 1.30.3` - `versionCode 130003` - **minSdk 24, target/compileSdk 36**
 > Stack: Capacitor 8.5 (core/android/browser) + statically exported Next.js frontend bundled in the APK
 
 ## Architecture

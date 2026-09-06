@@ -129,7 +129,9 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [groupTitle, setGroupTitle] = useState("");
+  const [groupKind, setGroupKind] = useState<"school" | "friends">("school");
   const [groupMemberIds, setGroupMemberIds] = useState<Set<string>>(new Set());
+  const [groupError, setGroupError] = useState<string | null>(null);
   const [addingMembers, setAddingMembers] = useState(false);
   const openingWith = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -202,16 +204,17 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   async function handleCreateGroup() {
     const title = groupTitle.trim();
     if (!title || groupMemberIds.size === 0) return;
-    const result = await createGroup(title, [...groupMemberIds]);
+    const result = await createGroup(title, [...groupMemberIds], groupKind);
     if (result.id) {
       setCreatingGroup(false);
       setGroupTitle("");
+      setGroupKind("school");
       setGroupMemberIds(new Set());
       setActiveId(result.id);
       setShowArchived(false);
       await openConversation(result.id);
     } else {
-      setActionError(`Couldn't create the group: ${result.error ?? "unknown error"}`);
+      setGroupError(result.error ?? "Couldn't create the group.");
     }
   }
 
@@ -516,7 +519,8 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                 <p className="truncate text-sm font-semibold text-navy">{active.name}</p>
                 {active.isGroup ? (
                   <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted">
-                    Group · {active.members.length} member{active.members.length === 1 ? "" : "s"}
+                    {active.groupKind === "friends" ? "Friends group" : "School group"} ·{" "}
+                    {active.members.length} member{active.members.length === 1 ? "" : "s"}
                   </p>
                 ) : active.otherId && (
                   <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted">
@@ -893,7 +897,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
         </div>
       )}
 
-      {/* Create group dialog: name + member picker */}
+      {/* Create group dialog: identity, group type, member picker (per Penpot) */}
       {creatingGroup && (
         <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setCreatingGroup(false)} role="presentation">
           <div
@@ -945,10 +949,30 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
               <input
                 value={groupTitle}
                 onChange={(e) => setGroupTitle(e.target.value)}
-                placeholder="Group name"
-                maxLength={60}
+                placeholder="Group name..."
+                maxLength={80}
                 className="h-[38px] w-full rounded-full border border-base bg-[var(--bg)] px-4 text-sm text-navy placeholder:text-muted outline-none focus:border-accent"
               />
+              {/* Penpot design: GROUP TYPE selector (School / Friends). */}
+              <div>
+                <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Group type</p>
+                <div className="flex gap-2">
+                  {(["school", "friends"] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setGroupKind(k)}
+                      className={`flex-1 rounded-full px-4 py-2 text-xs font-semibold capitalize transition ${
+                        groupKind === k
+                          ? "bg-accent-token text-on-accent"
+                          : "border border-base bg-surface text-muted hover:border-accent-soft"
+                      }`}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex h-[38px] items-center gap-2 rounded-full border border-base bg-[var(--bg)] px-4">
                 <SearchIcon className="h-5 w-5 shrink-0 text-muted" />
                 <input
@@ -961,8 +985,39 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+              {/* Penpot design: selected members appear as removable chips. */}
+              {groupMemberIds.size > 0 && (
+                <div className="flex flex-wrap gap-2 px-4 pb-1 pt-1.5 md:px-0">
+                  {personResults
+                    .filter((p) => groupMemberIds.has(p.id))
+                    .map((p) => (
+                      <span
+                        key={p.id}
+                        className="flex items-center gap-1.5 rounded-full border border-accent-soft bg-accent-soft py-1 pl-2.5 pr-1.5 text-[11px] font-semibold text-navy"
+                      >
+                        {p.full_name.split(" ")[0]}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${p.full_name}`}
+                          onClick={() =>
+                            setGroupMemberIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(p.id);
+                              return next;
+                            })
+                          }
+                          className="flex h-4 w-4 items-center justify-center rounded-full text-muted transition hover:text-warn"
+                        >
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                            <path d="M18 6 6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                </div>
+              )}
               <p className="px-4 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:px-4">
-                Members ({groupMemberIds.size} selected)
+                {groupMemberIds.size > 0 ? `${groupMemberIds.size} member${groupMemberIds.size === 1 ? "" : "s"}` : "Members"}
               </p>
               {peopleLoading ? (
                 <p className="px-4 py-3 text-sm text-muted">Loading directory...</p>
@@ -1011,14 +1066,27 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
             </div>
 
             <div className="border-t border-base p-4 md:border-0 md:p-0">
-              <button
-                type="button"
-                onClick={handleCreateGroup}
-                disabled={!groupTitle.trim() || groupMemberIds.size === 0}
-                className="w-full rounded-full bg-navy py-2.5 text-sm font-semibold text-white transition hover-bg-accent-token hover-text-on-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Create group
-              </button>
+              {groupError && <p className="mb-2 text-center text-xs text-warn">{groupError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatingGroup(false);
+                    setGroupError(null);
+                  }}
+                  className="flex-1 rounded-full border border-base py-2.5 text-sm font-semibold text-navy transition hover:border-accent"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateGroup}
+                  disabled={!groupTitle.trim() || groupMemberIds.size === 0}
+                  className="flex-1 rounded-full bg-navy py-2.5 text-sm font-semibold text-white transition hover-bg-accent-token hover-text-on-accent disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Create
+                </button>
+              </div>
             </div>
           </div>
         </div>

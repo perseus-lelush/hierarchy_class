@@ -4,7 +4,7 @@
 
 Hierarchy Class is a gamified academic-tracking platform for students, teachers, and school administrators. Real grades become tiered ranks (S++ → D), habits build streaks, and daily effort shows up in live progress — while grading data stays strictly controlled by teachers and admins.
 
-**Current version:** `1.30.2`
+**Current version:** `1.30.3`
 
 ---
 

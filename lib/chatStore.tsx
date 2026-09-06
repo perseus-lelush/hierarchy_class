@@ -30,6 +30,8 @@ export interface Conversation {
   unread: number;
   /** Group chats: isGroup=true, members holds the roster. */
   isGroup: boolean;
+  /** Penpot group type chosen at creation: school | friends. */
+  groupKind: "school" | "friends" | null;
   members: ConversationMember[];
   /** Only set on groups I created - enables "Add members". */
   isOwner: boolean;
@@ -62,7 +64,8 @@ interface ChatContextValue {
   /** Creates a group chat. Returns { id } on success, { error } on failure. */
   createGroup: (
     title: string,
-    memberIds: string[]
+    memberIds: string[],
+    kind?: "school" | "friends"
   ) => Promise<{ id?: string; error?: string }>;
   /** Group owner adds members. Resolves an error string or null. */
   addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<string | null>;
@@ -82,6 +85,7 @@ interface ConversationRow {
   is_group?: boolean;
   title?: string | null;
   created_by?: string | null;
+  group_kind?: "school" | "friends" | null;
   members?: {
     profile_id: string;
     deleted_at?: string | null;
@@ -143,6 +147,7 @@ function toConversation(row: ConversationRow, myProfileId: string, unread: numbe
     messagesLoading: false,
     unread,
     isGroup,
+    groupKind: isGroup ? (row.group_kind ?? "school") : null,
     members,
     isOwner: isGroup ? row.created_by === myProfileId : false,
   };
@@ -204,7 +209,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("conversations")
           .select(
-            "*, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role)"
+            "*, is_group, title, group_kind, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role)"
           )
           .or(`user_a_id.eq.${myProfileId},user_b_id.eq.${myProfileId}`),
         supabase
@@ -371,7 +376,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const { data: fresh } = await supabase
         .from("conversations")
         .select(
-          "*, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role)"
+          "*, is_group, title, group_kind, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role)"
         )
         .eq("id", convId)
         .single();
@@ -472,7 +477,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const { data: row } = await supabase
         .from("conversations")
         .select(
-          "id, user_a_id, user_b_id, role_a, role_b, is_group, title, created_by, last_message, last_message_at, read_at_a, read_at_b, archived_a, archived_b, deleted_a, deleted_b, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role), members:conversation_members(profile_id, deleted_at, profiles(id, full_name, avatar_url, role))"
+          "id, user_a_id, user_b_id, role_a, role_b, is_group, title, created_by, group_kind, last_message, last_message_at, read_at_a, read_at_b, archived_a, archived_b, deleted_a, deleted_b, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role), members:conversation_members(profile_id, deleted_at, profiles(id, full_name, avatar_url, role))"
         )
         .eq("id", conversationId)
         .single();
@@ -624,13 +629,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const createGroup = useCallback(
     async (
       title: string,
-      memberIds: string[]
+      memberIds: string[],
+      kind?: "school" | "friends"
     ): Promise<{ id?: string; error?: string }> => {
       if (!profile) return { error: "You're not signed in." };
       const supabase = createClient();
       const { data, error } = await (supabase as any).rpc("create_chat_group", {
         p_title: title,
         p_member_ids: memberIds,
+        p_kind: kind ?? "school",
       });
       if (error) {
         console.error("[chat] createGroup failed:", error.message);

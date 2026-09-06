@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.30.2",
-  "versionCode": 130002,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.30.2.apk",
-  "releaseNotes": "Voice calls now connect properly (ring + accept handshake fixed), group creation shows the real error if it fails, and the messaging screen was de-duplicated (one filter row, no double Archived control).",
+  "latestVersion": "1.30.3",
+  "versionCode": 130003,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.30.3.apk",
+  "releaseNotes": "Group creation fixed (database constraint) with the full Penpot design: group type selector (School/Friends), member chips, and any-character group names. Requires the 077 migration - apply it in Supabase first.",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }
