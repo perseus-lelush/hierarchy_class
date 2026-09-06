@@ -107,6 +107,9 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
     markUnread,
     blockUser,
     unblockUser,
+    createGroup,
+    addGroupMembers,
+    leaveGroup,
   } = useChatStore();
   const { profiles: people, loading: peopleLoading } = useSchoolProfiles();
 
@@ -121,6 +124,10 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState<"hide" | "block" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupTitle, setGroupTitle] = useState("");
+  const [groupMemberIds, setGroupMemberIds] = useState<Set<string>>(new Set());
+  const [addingMembers, setAddingMembers] = useState(false);
   const openingWith = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messageCountRef = useRef(0);
@@ -165,25 +172,45 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   // Capacitor Android the hardware back button closes the dialog too (same
   // contract as the shared Modal).
   useEffect(() => {
-    if (!menuOpen && !newChatOpen) return;
+    if (!menuOpen && !newChatOpen && !creatingGroup && !addingMembers) return;
+    const closeAll = () => {
+      setMenuOpen(false);
+      setNewChatOpen(false);
+      setCreatingGroup(false);
+      setAddingMembers(false);
+    };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMenuOpen(false);
-        setNewChatOpen(false);
-      }
+      if (e.key === "Escape") closeAll();
     };
     window.addEventListener("keydown", onKey);
     const unregisterBack =
-      newChatOpen || menuOpen ? registerBackHandler(() => {
-        setMenuOpen(false);
-        setNewChatOpen(false);
-        return true;
-      }) : null;
+      newChatOpen || menuOpen || creatingGroup || addingMembers
+        ? registerBackHandler(() => {
+            closeAll();
+            return true;
+          })
+        : null;
     return () => {
       window.removeEventListener("keydown", onKey);
       unregisterBack?.();
     };
-  }, [menuOpen, newChatOpen]);
+  }, [menuOpen, newChatOpen, creatingGroup, addingMembers]);
+
+  async function handleCreateGroup() {
+    const title = groupTitle.trim();
+    if (!title || groupMemberIds.size === 0) return;
+    const id = await createGroup(title, [...groupMemberIds]);
+    if (id) {
+      setCreatingGroup(false);
+      setGroupTitle("");
+      setGroupMemberIds(new Set());
+      setActiveId(id);
+      setShowArchived(false);
+      await openConversation(id);
+    } else {
+      setActionError("Couldn't create the group. Check the name and members, then try again.");
+    }
+  }
 
   const active =
     list.find((c) => c.id === activeId) ??
@@ -419,7 +446,18 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                   activeId === c.id ? "bg-[var(--surface-strong)]" : "hover:bg-[var(--surface-strong)]"
                 }`}
               >
-                <UserAvatar name={c.name} src={c.avatarUrl} size="lg" profileId={c.otherId} />
+                {c.isGroup ? (
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-base bg-[var(--surface-strong)] text-muted">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                  </span>
+                ) : (
+                  <UserAvatar name={c.name} src={c.avatarUrl} size="lg" profileId={c.otherId} />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-semibold text-navy">{c.name}</p>
@@ -471,17 +509,32 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                   </svg>
                 </button>
               )}
-              <UserAvatar name={active.name} src={active.avatarUrl} size="lg" profileId={active.otherId} />
+              {active.isGroup ? (
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-base bg-[var(--surface-strong)] text-muted">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </span>
+              ) : (
+                <UserAvatar name={active.name} src={active.avatarUrl} size="lg" profileId={active.otherId} />
+              )}
               <div className="min-w-0 flex-1 leading-tight">
                 <p className="truncate text-sm font-semibold text-navy">{active.name}</p>
-                {active.otherId && (
+                {active.isGroup ? (
+                  <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted">
+                    Group · {active.members.length} member{active.members.length === 1 ? "" : "s"}
+                  </p>
+                ) : active.otherId && (
                   <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted">
                     {ROLE_LABEL[active.otherRole] ?? active.otherRole}
                     {isBlocked ? " · Blocked" : ""}
                   </p>
                 )}
               </div>
-              {active.otherId && (
+              {(active.isGroup || active.otherId) && (
                 <div className="relative">
                   <button
                     type="button"
@@ -537,10 +590,39 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                           }}
                           className="flex w-full items-center px-4 py-2 text-left text-[13px] text-warn transition hover:bg-[var(--surface-strong)]"
                         >
-                          Delete conversation
+                          {active.isGroup ? "Delete group for me" : "Delete conversation"}
                         </button>
                         <div className="my-1 border-t border-base" />
-                        {isBlocked ? (
+                        {active.isGroup ? (
+                          <>
+                            {active.isOwner && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  setMenuOpen(false);
+                                  setAddingMembers(true);
+                                }}
+                                className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
+                              >
+                                Add members
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={async () => {
+                                setMenuOpen(false);
+                                const err = await leaveGroup(active.id);
+                                if (err) setActionError(err);
+                                else setActiveId(null);
+                              }}
+                              className="flex w-full items-center px-4 py-2 text-left text-[13px] text-warn transition hover:bg-[var(--surface-strong)]"
+                            >
+                              Leave group
+                            </button>
+                          </>
+                        ) : isBlocked ? (
                           <button
                             type="button"
                             role="menuitem"
@@ -581,7 +663,11 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                     </svg>
                   </span>
                   <p className="text-sm font-semibold text-navy">No messages yet</p>
-                  <p className="text-xs text-muted">Say hi to {active.name.split(" ")[0]} - the conversation starts here.</p>
+                  <p className="text-xs text-muted">
+                    {active.isGroup
+                      ? `Start the conversation in ${active.name}.`
+                      : `Say hi to ${active.name.split(" ")[0]} - the conversation starts here.`}
+                  </p>
                 </div>
               ) : (
                 (() => {
@@ -606,6 +692,9 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                     }
                     rows.push(
                       <div key={m.id} className={`flex flex-col ${m.mine ? "items-end" : "items-start"}`}>
+                        {active.isGroup && !m.mine && (
+                          <span className="mb-0.5 px-1 text-[10.5px] font-semibold text-muted">{m.fromName}</span>
+                        )}
                         <span
                           className={`max-w-[72%] whitespace-pre-wrap break-words rounded-[14px] px-4 py-2.5 text-sm leading-[1.625] ${
                             m.mine
@@ -754,7 +843,24 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-              <p className="px-4 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:px-4">People</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewChatOpen(false);
+                  setCreatingGroup(true);
+                }}
+                className="flex min-h-[52px] w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[var(--surface-strong)] md:rounded-[10px]"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-token text-on-accent">
+                  <PlusIcon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block text-[14px] font-semibold text-navy">New group</span>
+                  <span className="mt-0.5 block text-[11px] text-muted">Start a group with classmates or teachers</span>
+                </span>
+                <ChevronRightIcon className="h-5 w-5 shrink-0 text-faint" />
+              </button>
+              <p className="px-4 pb-1 pt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:px-4">People</p>
               {peopleLoading ? (
                 <p className="px-4 py-3 text-sm text-muted">Loading directory...</p>
               ) : personResults.length === 0 ? (
@@ -781,6 +887,150 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Create group dialog: name + member picker */}
+      {creatingGroup && (
+        <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setCreatingGroup(false)} role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="New group"
+            onClick={(e) => e.stopPropagation()}
+            className={
+              isMobile
+                ? "absolute inset-0 flex flex-col bg-surface pb-[env(safe-area-inset-bottom)]"
+                : "absolute left-1/2 top-1/2 flex max-h-[80vh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-2xl border border-base bg-surface p-5 shadow-xl"
+            }
+          >
+            <div className="flex min-h-8 items-center justify-between gap-3 p-4 md:p-0">
+              {isMobile ? (
+                <button
+                  type="button"
+                  onClick={() => setCreatingGroup(false)}
+                  aria-label="Back"
+                  className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full text-muted transition hover:bg-[var(--surface-strong)] hover:text-navy"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5" />
+                    <path d="M12 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              ) : (
+                <span />
+              )}
+              <p className="text-base font-semibold text-navy">New group</p>
+              {isMobile ? (
+                <span className="h-9 w-9" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCreatingGroup(false)}
+                  aria-label="Close"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border)] text-navy transition hover:opacity-80"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3 p-4 pt-0 md:p-0">
+              <input
+                value={groupTitle}
+                onChange={(e) => setGroupTitle(e.target.value)}
+                placeholder="Group name"
+                maxLength={60}
+                className="h-[38px] w-full rounded-full border border-base bg-[var(--bg)] px-4 text-sm text-navy placeholder:text-muted outline-none focus:border-accent"
+              />
+              <div className="flex h-[38px] items-center gap-2 rounded-full border border-base bg-[var(--bg)] px-4">
+                <SearchIcon className="h-5 w-5 shrink-0 text-muted" />
+                <input
+                  value={dialogQuery}
+                  onChange={(e) => setDialogQuery(e.target.value)}
+                  placeholder="Search members..."
+                  className="w-full bg-transparent text-sm text-navy placeholder:text-muted outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+              <p className="px-4 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:px-4">
+                Members ({groupMemberIds.size} selected)
+              </p>
+              {peopleLoading ? (
+                <p className="px-4 py-3 text-sm text-muted">Loading directory...</p>
+              ) : personResults.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-muted">
+                  {dialogQuery.trim() ? `No people match “${dialogQuery}”.` : "No one available."}
+                </p>
+              ) : (
+                personResults.map((person) => {
+                  const checked = groupMemberIds.has(person.id);
+                  return (
+                    <button
+                      key={person.id}
+                      type="button"
+                      onClick={() =>
+                        setGroupMemberIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(person.id)) next.delete(person.id);
+                          else next.add(person.id);
+                          return next;
+                        })
+                      }
+                      className="flex min-h-[44px] w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[var(--surface-strong)]"
+                    >
+                      <UserAvatar name={person.full_name} src={person.avatar_url} size="md" profileId={person.id} />
+                      <div className="min-w-0 flex-1 leading-tight">
+                        <p className="truncate text-[13px] font-semibold text-navy">{person.full_name}</p>
+                        <p className="mt-0.5 truncate text-[11px] text-muted">{personSubtitle(person)}</p>
+                      </div>
+                      <span
+                        aria-hidden
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
+                          checked ? "border-accent-token bg-accent-token text-on-accent" : "border-base"
+                        }`}
+                      >
+                        {checked && (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="border-t border-base p-4 md:border-0 md:p-0">
+              <button
+                type="button"
+                onClick={handleCreateGroup}
+                disabled={!groupTitle.trim() || groupMemberIds.size === 0}
+                className="w-full rounded-full bg-navy py-2.5 text-sm font-semibold text-white transition hover-bg-accent-token hover-text-on-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Create group
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add members dialog (group owner only) */}
+      {addingMembers && active?.isGroup && (
+        <AddMembersDialog
+          existing={new Set(active.members.map((m) => m.id))}
+          onClose={() => setAddingMembers(false)}
+          onConfirm={async (ids) => {
+            const err = await addGroupMembers(active.id, ids);
+            setAddingMembers(false);
+            if (err) setActionError(err);
+          }}
+        />
       )}
 
       {confirming && active && (
@@ -816,6 +1066,101 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function AddMembersDialog({
+  existing,
+  onClose,
+  onConfirm,
+}: {
+  existing: Set<string>;
+  onClose: () => void;
+  onConfirm: (ids: string[]) => Promise<void>;
+}) {
+  const { profiles: people, loading } = useSchoolProfiles();
+  const { profile: me } = useMyProfile();
+  const { blocks } = useChatStore();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const candidates = (people ?? [])
+    .filter((p) => p.id !== me?.id)
+    .filter((p) => !existing.has(p.id))
+    .filter((p) => !blocks.has(p.id));
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60" onClick={onClose} role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add members"
+        onClick={(e) => e.stopPropagation()}
+        className="absolute left-1/2 top-1/2 flex max-h-[80vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-base bg-surface p-5 shadow-xl"
+      >
+        <p className="text-base font-semibold text-navy">Add members</p>
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+          {loading ? (
+            <p className="px-4 py-3 text-sm text-muted">Loading directory...</p>
+          ) : candidates.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-muted">Everyone is already in the group.</p>
+          ) : (
+            candidates.map((person) => {
+              const checked = selected.has(person.id);
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() =>
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(person.id)) next.delete(person.id);
+                      else next.add(person.id);
+                      return next;
+                    })
+                  }
+                  className="flex min-h-[44px] w-full items-center gap-3 px-1 py-2.5 text-left transition hover:bg-[var(--surface-strong)]"
+                >
+                  <UserAvatar name={person.full_name} src={person.avatar_url} size="md" profileId={person.id} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-navy">{person.full_name}</p>
+                    <p className="truncate text-[11px] text-muted">{personSubtitle(person)}</p>
+                  </div>
+                  <span
+                    aria-hidden
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
+                      checked ? "border-accent-token bg-accent-token text-on-accent" : "border-base"
+                    }`}
+                  >
+                    {checked && (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    )}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            disabled={selected.size === 0}
+            onClick={() => void onConfirm([...selected])}
+            className="flex-1 rounded-full bg-navy py-2.5 text-sm font-semibold text-white transition hover-bg-accent-token hover-text-on-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Add {selected.size > 0 ? `(${selected.size})` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-full border border-base py-2.5 text-sm font-semibold text-navy transition hover:border-accent"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

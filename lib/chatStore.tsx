@@ -28,6 +28,18 @@ export interface Conversation {
   messages: ChatMessage[];
   messagesLoading: boolean;
   unread: number;
+  /** Group chats: isGroup=true, members holds the roster. */
+  isGroup: boolean;
+  members: ConversationMember[];
+  /** Only set on groups I created - enables "Add members". */
+  isOwner: boolean;
+}
+
+export interface ConversationMember {
+  id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  role: ChatRole;
 }
 
 interface ChatContextValue {
@@ -47,6 +59,12 @@ interface ChatContextValue {
   markUnread: (conversationId: string) => Promise<void>;
   blockUser: (otherProfileId: string) => Promise<void>;
   unblockUser: (otherProfileId: string) => Promise<void>;
+  /** Creates a group chat and returns its conversation id (null on failure). */
+  createGroup: (title: string, memberIds: string[]) => Promise<string | null>;
+  /** Group owner adds members. Resolves an error string or null. */
+  addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<string | null>;
+  /** Any member can leave a group. Resolves an error string or null. */
+  leaveGroup: (conversationId: string) => Promise<string | null>;
   refetch: () => void;
 }
 
@@ -55,9 +73,17 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 interface ConversationRow {
   id: string;
   user_a_id: string;
-  user_b_id: string;
+  user_b_id: string | null;
   role_a: string;
-  role_b: string;
+  role_b: string | null;
+  is_group?: boolean;
+  title?: string | null;
+  created_by?: string | null;
+  members?: {
+    profile_id: string;
+    deleted_at?: string | null;
+    profiles: { id: string; full_name: string; avatar_url: string | null; role: string };
+  }[];
   last_message: string | null;
   last_message_at: string | null;
   read_at_a: string | null;
@@ -82,6 +108,7 @@ function toMessage(m: any, myProfileId: string): ChatMessage {
 }
 
 function toConversation(row: ConversationRow, myProfileId: string, unread: number): Conversation {
+  const isGroup = !!row.is_group;
   const iAmA = row.user_a_id === myProfileId;
   const other = iAmA ? row.b : row.a;
   const cutoff = myCutoff(row, myProfileId);
@@ -91,12 +118,20 @@ function toConversation(row: ConversationRow, myProfileId: string, unread: numbe
   // this guard fixes direct fetches (ensure_conversation) that re-add a
   // deleted thread and would otherwise show the old message + old timestamp.
   const stalePreview = !!cutoff && (!row.last_message_at || row.last_message_at <= cutoff);
+  const members: ConversationMember[] = isGroup
+    ? (row.members ?? []).map((m) => ({
+        id: m.profile_id,
+        fullName: m.profiles?.full_name ?? "Member",
+        avatarUrl: m.profiles?.avatar_url ?? null,
+        role: (m.profiles?.role ?? "student") as ChatRole,
+      }))
+    : [];
   return {
     id: row.id,
-    otherId: iAmA ? row.user_b_id : row.user_a_id,
+    otherId: iAmA ? (row.user_b_id ?? "") : row.user_a_id,
     otherRole: ((iAmA ? row.role_b : row.role_a) ?? other?.role ?? "student") as ChatRole,
-    name: other?.full_name ?? "Unknown",
-    avatarUrl: other?.avatar_url ?? null,
+    name: isGroup ? (row.title ?? "Group") : (other?.full_name ?? "Unknown"),
+    avatarUrl: isGroup ? null : (other?.avatar_url ?? null),
     lastMessage: stalePreview ? null : row.last_message,
     lastMessageAt: stalePreview ? null : row.last_message_at,
     lastReadAt: iAmA ? row.read_at_a : row.read_at_b,
@@ -104,12 +139,19 @@ function toConversation(row: ConversationRow, myProfileId: string, unread: numbe
     messages: [],
     messagesLoading: false,
     unread,
+    isGroup,
+    members,
+    isOwner: isGroup ? row.created_by === myProfileId : false,
   };
 }
 
-/** My side's deleted_at doubles as the history cutoff: messages older than it
- *  stay hidden even after the thread revives with new activity. */
+/** My side's history cutoff: my deleted_at column (pairs) or member row
+ *  (groups) - messages older than it stay hidden even after the thread
+ *  revives with new activity. */
 function myCutoff(row: ConversationRow, myProfileId: string): string | null {
+  if (row.is_group) {
+    return row.members?.find((m) => m.profile_id === myProfileId)?.deleted_at ?? null;
+  }
   return row.user_a_id === myProfileId ? row.deleted_a : row.deleted_b;
 }
 
@@ -155,9 +197,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("conversations")
           .select(
-            "*, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role)"
+            "*, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role), members:conversation_members(profile_id, deleted_at, profiles(id, full_name, avatar_url, role))"
           )
-          .or(`user_a_id.eq.${myProfileId},user_b_id.eq.${myProfileId}`),
+          .or(
+            `user_a_id.eq.${myProfileId},user_b_id.eq.${myProfileId},conversation_members.profile_id.eq.${myProfileId}`
+          ),
         (supabase as any).rpc("get_unread_counts"),
         supabase.from("chat_blocks").select("blocked_id"),
       ]);
@@ -393,7 +437,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const { data: row } = await supabase
         .from("conversations")
         .select(
-          "id, user_a_id, user_b_id, role_a, role_b, last_message, last_message_at, read_at_a, read_at_b, archived_a, archived_b, deleted_a, deleted_b, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role)"
+          "id, user_a_id, user_b_id, role_a, role_b, is_group, title, created_by, last_message, last_message_at, read_at_a, read_at_b, archived_a, archived_b, deleted_a, deleted_b, a:profiles!user_a_id(id, full_name, avatar_url, role), b:profiles!user_b_id(id, full_name, avatar_url, role), members:conversation_members(profile_id, deleted_at, profiles(id, full_name, avatar_url, role))"
         )
         .eq("id", conversationId)
         .single();
@@ -542,6 +586,59 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [profile]
   );
 
+  const createGroup = useCallback(
+    async (title: string, memberIds: string[]): Promise<string | null> => {
+      if (!profile) return null;
+      const supabase = createClient();
+      const { data, error } = await (supabase as any).rpc("create_chat_group", {
+        p_title: title,
+        p_member_ids: memberIds,
+      });
+      if (error) {
+        console.error("[chat] createGroup failed:", error.message);
+        return null;
+      }
+      refetch();
+      return (data as string) ?? null;
+    },
+    [profile, refetch]
+  );
+
+  const addGroupMembers = useCallback(
+    async (conversationId: string, memberIds: string[]): Promise<string | null> => {
+      if (!profile) return "You're not signed in.";
+      const supabase = createClient();
+      const { error } = await (supabase as any).rpc("add_chat_group_members", {
+        p_conversation_id: conversationId,
+        p_member_ids: memberIds,
+      });
+      if (error) {
+        console.error("[chat] addGroupMembers failed:", error.message);
+        return error.message || "Couldn't add members.";
+      }
+      refetch();
+      return null;
+    },
+    [profile, refetch]
+  );
+
+  const leaveGroup = useCallback(
+    async (conversationId: string): Promise<string | null> => {
+      if (!profile) return "You're not signed in.";
+      const supabase = createClient();
+      const { error } = await (supabase as any).rpc("leave_chat_group", {
+        p_conversation_id: conversationId,
+      });
+      if (error) {
+        console.error("[chat] leaveGroup failed:", error.message);
+        return error.message || "Couldn't leave the group.";
+      }
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      return null;
+    },
+    [profile]
+  );
+
   const archived = useMemo(() => conversations.filter((c) => c.archived), [conversations]);
   const active = useMemo(() => conversations.filter((c) => !c.archived), [conversations]);
 
@@ -561,6 +658,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       markUnread,
       blockUser,
       unblockUser,
+      createGroup,
+      addGroupMembers,
+      leaveGroup,
       refetch,
     }),
     [
@@ -578,6 +678,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       markUnread,
       blockUser,
       unblockUser,
+      createGroup,
+      addGroupMembers,
+      leaveGroup,
       refetch,
     ]
   );
