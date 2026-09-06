@@ -9,8 +9,8 @@
 //   FEEDBACK_FROM_EMAIL=Hierarchy Class <noreply@yourdomain.com>
 //                                            (optional; falls back to
 //                                             Resend's onboarding sandbox)
-// Feedback delivery address is hardcoded as FEEDBACK_INBOX in
-// app/api/feedback/route.ts - not configurable via env.
+// The feedback delivery address comes from the FEEDBACK_INBOX env var
+// (see app/api/feedback/route.ts).
 
 const DEFAULT_FROM = "Hierarchy Class <onboarding@resend.dev>";
 

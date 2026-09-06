@@ -27,11 +27,15 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 //
 // Email is sent through Resend's REST API (no SDK needed). Configure:
 //   RESEND_API_KEY=re_...          (from https://resend.com/api-keys)
+//   FEEDBACK_INBOX=you@example.com (delivery address for feedback emails)
 //   FEEDBACK_FROM_EMAIL=Hierarchy Class <noreply@yourdomain.com>
 //                                  (optional; defaults to Resend's sandbox)
 
-// The feedback inbox (the developer's own email).
-const FEEDBACK_INBOX = "joshanlucmayan058@gmail.com";
+// The feedback inbox comes from the environment - never hardcoded, so the
+// repo carries no personal email addresses. When it is unset the report is
+// still saved (and surfaced to the admin list); only the email leg is lost,
+// loudly (server log + a failure note in the API response).
+const feedbackInbox = process.env.FEEDBACK_INBOX?.trim() ?? "";
 
 const MAX_ATTACHMENTS = 3;
 
@@ -178,11 +182,16 @@ export async function POST(request: Request) {
       : "",
   ].filter(Boolean).join("\n");
 
-  const result = await sendEmail({
-    to: FEEDBACK_INBOX,
-    subject: `Hierarchy Class feedback from ${fullName} (${role})`,
-    text: lines,
-  });
+  const result = feedbackInbox
+    ? await sendEmail({
+        to: feedbackInbox,
+        subject: `Hierarchy Class feedback from ${fullName} (${role})`,
+        text: lines,
+      })
+    : { ok: false, error: "FEEDBACK_INBOX not configured" };
+  if (!feedbackInbox) {
+    console.error("[feedback] FEEDBACK_INBOX is not set - report saved but not emailed.");
+  }
 
   if (!result.ok || insertError) {
     return NextResponse.json(

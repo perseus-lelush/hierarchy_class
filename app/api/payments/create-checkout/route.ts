@@ -280,12 +280,18 @@ export async function POST(request: NextRequest) {
     // 9. Create PayMongo Checkout Session
     const amountCentavos = pesoToCentavos(Number(packageData.price_php));
 
-    // Prefer the deployment-wide base URL (same convention as auth redirect
-    // links); fall back to the request origin for local development.
-    const baseUrl =
-      siteUrlBase() ??
-      request.headers.get('origin') ??
-      'http://localhost:3000';
+    // The base URL is deployment configuration ONLY. A client-controlled
+    // Origin header must never influence success/cancel URLs (open-redirect /
+    // URL-injection vector), so this fails closed when the deployment site
+    // URL is unset - same contract as the auth email-redirect links.
+    const baseUrl = siteUrlBase();
+    if (!baseUrl) {
+      console.error('Checkout misconfigured: the deployment site URL is required to build payment redirect URLs.');
+      return NextResponse.json(
+        { error: 'Checkout is not available right now' },
+        { status: 500 }
+      );
+    }
     
     const paymongoSession = await createCheckoutSession({
       referenceNumber,
