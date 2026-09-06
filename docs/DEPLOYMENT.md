@@ -46,7 +46,7 @@ repo):
 | `NEXT_PUBLIC_SITE_URL` | The deployment origin, e.g. `https://your-production-domain` - **required** as the base for email confirmation links and password recovery redirects |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase project settings -> API (service_role key) - **server-only**; used by account deletion, the signup duplicate-identifier check, the feedback attachment signing, payment server routes, and `scripts/provision-admin.mjs` |
 | `RESEND_API_KEY` | Resend -> API Keys - **server-only**; required for the feedback email, restriction notices, and account-deletion confirmation. Without it those emails are skipped (feedback is still stored) |
-| `FEEDBACK_INBOX` | The email address that receives user feedback reports (feedback route). **Required for feedback email delivery** - an unset inbox still stores reports but never emails them |
+| `FEEDBACK_INBOX` | Your email address - the ONLY delivery for user feedback (email-only since v1.28.0, nothing is stored in the database). **Required for feedback to work**; without it the feedback route returns 503 |
 | `UPSTASH_REDIS_REST_URL` | Upstash console -> database -> REST API - **server-only; required in production**. Backs the cross-instance rate limiters (signup, resend-confirmation, music resolution). Without it the limiters fail open with a logged error - do not deploy without them |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash console -> database -> REST API (pair with the URL above) |
 | `PAYMONGO_SECRET_KEY` | **Currently unused** - Florin top-ups are switched off (`PAYMENTS_ENABLED = false` in `lib/paymentsConfig.ts`). Required again only when payments are re-enabled. See [PAYMENTS.md](./PAYMENTS.md) |

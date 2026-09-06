@@ -16,7 +16,7 @@ migration index. Migrations live in `database/migrations/` - see
 | `schools` | The tenant (a school/campus), registered by the platform owner | name, abbreviation, active, **registration_enabled** (whether the school accepts public signup - migration 059) |
 | `profiles` | One row per app user (student/teacher/admin) | user_id, role, school_id, full_name, **middle_name** (nullable), first_name, last_name, **student_id** / **faculty_id** (school-issued identifiers, unique within school), avatar_url, bio, hobbies, tags, favorite_subject, educational_level, program, level_label, section (legacy), is_librarian, **deactivated_at** (self-service deactivation timestamp, nullable), **restricted_at** (school-admin restriction timestamp, nullable - migration 060) |
 | `account_appeals` | Appeals from restricted users (migration 060) | user_id, reason, status (pending/approved/denied), reviewed_by, reviewed_at; one OPEN appeal per user (partial unique index) |
-| `feedback_reports` | Feedback/bug reports with attachments (migration 060) | user_id, page, message, attachment_paths (paths into the private `feedback` bucket) |
+| `feedback_reports` | Legacy feedback/bug report rows (migration 060). **No longer written** - feedback is email-only (FEEDBACK_INBOX) since v1.28.0; existing rows stay admin-readable | user_id, page, message, attachment_paths (paths into the private `feedback` bucket) |
 | `account_requests` | Deletion requests (deactivation is now self-service) | requester_id, type ('deletion'), status |
 
 ### Academics (the hierarchy)

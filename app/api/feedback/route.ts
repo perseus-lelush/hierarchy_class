@@ -14,16 +14,17 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 // submissions are rejected, which also makes the email path impossible to
 // bomb without an account.
 //
-// Delivery goes to the developer's own inbox, hardcoded below so a missing
-// env var can never silently drop feedback. The RESEND_* env vars still
-// control the transport.
+// Delivery is EMAIL-ONLY to the developer's own inbox (FEEDBACK_INBOX env
+// var) - reports are NOT stored in the database and do not appear in any
+// admin panel. A signed-in session is still required so the report is always
+// attributed and the email path cannot be bombed anonymously.
 //
 // Attachments: the client uploads files to the private "feedback" storage
 // bucket first (paths {school_id}/{user_id}/{uuid}.ext, enforced by storage
 // RLS), then sends the resulting paths here. The route re-validates that
-// every path belongs to the caller's own school/user folder, stores the
-// report row (feedback_reports, RLS-scoped), signs the objects with the
-// server-only client, and emails the developer with working links.
+// every path belongs to the caller's own school/user folder, signs the
+// objects with the server-only client, and emails the developer with working
+// links.
 //
 // Email is sent through Resend's REST API (no SDK needed). Configure:
 //   RESEND_API_KEY=re_...          (from https://resend.com/api-keys)
@@ -32,10 +33,13 @@ import { createServiceClient } from "@/lib/supabase/serviceClient";
 //                                  (optional; defaults to Resend's sandbox)
 
 // The feedback inbox comes from the environment - never hardcoded, so the
-// repo carries no personal email addresses. When it is unset the report is
-// still saved (and surfaced to the admin list); only the email leg is lost,
-// loudly (server log + a failure note in the API response).
+// repo carries no personal email addresses. Without it the route fails with
+// 503 and the report is NOT delivered or stored anywhere - set it in every
+// environment where feedback should work.
 const feedbackInbox = process.env.FEEDBACK_INBOX?.trim() ?? "";
+if (!feedbackInbox) {
+  console.error("[feedback] FEEDBACK_INBOX is not set - feedback cannot be delivered.");
+}
 
 const MAX_ATTACHMENTS = 3;
 
@@ -141,19 +145,8 @@ export async function POST(request: Request) {
     .maybeSingle()) as unknown as { data: { name: string } | null; error: Error | null };
   const schoolName = school?.name ?? null;
 
-  // Persist the report row (RLS: the caller's own session insert policy
-  // gates this - a forged path set is filtered above). A storage/DB failure
-  // must not silently vanish: report it in the response while still emailing.
-  const { error: insertError } = await (supabase.from("feedback_reports") as any).insert({
-    school_id: schoolId,
-    user_id: profileId,
-    page,
-    message: feedback,
-    attachment_paths: verifiedPaths,
-  });
-
   // Sign attachment URLs with the server-only client (the reporter cannot
-  // read objects back through the anon key - only same-school admins can).
+  // read objects back through the anon key). Links go ONLY into the email.
   const signedLinks: string[] = [];
   const svc = createServiceClient();
   if (svc && verifiedPaths.length > 0) {
@@ -182,28 +175,26 @@ export async function POST(request: Request) {
       : "",
   ].filter(Boolean).join("\n");
 
-  const result = feedbackInbox
-    ? await sendEmail({
-        to: feedbackInbox,
-        subject: `Hierarchy Class feedback from ${fullName} (${role})`,
-        text: lines,
-      })
-    : { ok: false, error: "FEEDBACK_INBOX not configured" };
+  // Email-only delivery: the report is not stored in any table. A missing
+  // inbox or a provider failure is a hard error so the user knows their
+  // feedback did NOT reach anyone.
   if (!feedbackInbox) {
-    console.error("[feedback] FEEDBACK_INBOX is not set - report saved but not emailed.");
+    return NextResponse.json(
+      { ok: false, error: "Feedback is temporarily unavailable - please try again later." },
+      { status: 503 }
+    );
   }
 
-  if (!result.ok || insertError) {
+  const result = await sendEmail({
+    to: feedbackInbox,
+    subject: `Hierarchy Class feedback from ${fullName} (${role})`,
+    text: lines,
+  });
+
+  if (!result.ok) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: insertError && !result.ok
-          ? "Couldn't save or send your feedback. Please try again."
-          : result.ok
-            ? "Your feedback was emailed, but saving a copy in the admin list failed."
-            : "Couldn't send the feedback email. Your report was saved and can be reviewed by your school admin.",
-      },
-      { status: result.ok ? 500 : 502 }
+      { ok: false, error: "Couldn't send the feedback email. Please try again." },
+      { status: 502 }
     );
   }
 

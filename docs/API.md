@@ -17,7 +17,7 @@ three surfaces:
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/feedback` | POST | Sends the feedback/report form to the developer's inbox (hardcoded in the route, delivered via Resend). Requires a signed-in user - anonymous submissions are rejected |
+| `/api/feedback` | POST | Emails the feedback/report form directly to the developer's inbox (`FEEDBACK_INBOX` env var, via Resend). Email-only since v1.28.0 - nothing is stored. Requires a signed-in user - anonymous submissions are rejected |
 | `/api/resolve-music` | POST | Resolves a music link (YouTube/SoundCloud/Vimeo/Apple Music/Spotify - including albums, playlists, artists, episodes, shows) into title/artist/cover. Free and open, no login; per-IP rate limited (30 req/min) |
 | `/api/export-account` | GET | Own-data JSON export ("Download My Data"); RLS-gated to the caller's own rows |
 | `/api/version` | GET | Public version probe for the service-worker update check |

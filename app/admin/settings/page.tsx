@@ -14,14 +14,12 @@ import { ThemePicker } from "@/components/ThemePicker";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { useAccountRequests } from "@/lib/useAccountRequests";
 import { useAppeals } from "@/lib/useAppeals";
-import { useFeedbackReports } from "@/lib/useFeedbackReports";
 import { resolveDeletionRequest, resolveAppeal } from "@/lib/bridgeClient";
 import { APP_VERSION } from "@/lib/version";
 
 export default function AdminSettingsPage() {
   const { requests, loading: requestsLoading, error: requestsError, refetch: refetchRequests } = useAccountRequests();
   const { appeals, loading: appealsLoading, error: appealsError, refetch: refetchAppeals } = useAppeals();
-  const { reports: feedbackReports, loading: feedbackLoading, error: feedbackError, refetch: refetchFeedback } = useFeedbackReports();
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const pendingAppeals = appeals.filter((a) => a.status === "pending").length;
 
@@ -140,75 +138,6 @@ export default function AdminSettingsPage() {
         </p>
         <div className="mt-4">
           <FeedbackForm />
-        </div>
-      </CornerFrame>
-
-      {/* ============================================================ */}
-      {/* FEEDBACK REPORTS RECEIVED                                     */}
-      {/* ============================================================ */}
-      <CornerFrame className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="section-label">Feedback reports received</h3>
-          <button
-            type="button"
-            onClick={refetchFeedback}
-            className="rounded-full border border-base px-3 py-1 text-[11px] font-semibold text-navy transition hover:border-accent"
-          >
-            Refresh
-          </button>
-        </div>
-        <p className="mt-1.5 text-xs leading-5 text-muted">
-          Feedback and problem reports submitted by students and teachers at your school.
-        </p>
-        <div className="mt-4">
-          {feedbackLoading ? (
-            <div className="space-y-2">
-              {[0, 1].map((i) => (
-                <div key={i} className="h-20 animate-pulse rounded-[10px] border border-base bg-tile" />
-              ))}
-            </div>
-          ) : feedbackError ? (
-            <p className="rounded-[10px] border border-warn-soft bg-warn-soft px-4 py-3 text-sm text-warn">
-              {feedbackError}
-            </p>
-          ) : feedbackReports.length === 0 ? (
-            <div className="py-4">
-              <EmptyState
-                icon={<IconPost size={16} />}
-                title="No reports yet"
-                desc="Feedback and reports from your school will appear here."
-              />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {feedbackReports.map((report) => (
-                <div
-                  key={report.id}
-                  className="rounded-[10px] border border-base bg-surface p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="truncate text-sm font-semibold text-navy">
-                      {report.user_name ?? "A user"}
-                    </p>
-                    <p className="shrink-0 text-[11px] text-muted">
-                      {new Date(report.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                  {report.page && (
-                    <p className="mt-1 truncate text-[11px] text-faint">Page: {report.page}</p>
-                  )}
-                  <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-5 text-muted">
-                    {report.message}
-                  </p>
-                  {report.attachment_paths.length > 0 && (
-                    <p className="mt-2 text-[11px] text-faint">
-                      {report.attachment_paths.length} attachment(s)
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </CornerFrame>
 

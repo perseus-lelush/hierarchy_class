@@ -163,7 +163,7 @@ export function FeedbackForm() {
         </button>
         {files.length > 0 && (
           <span className="text-[11px] text-muted">
-            Uploaded privately with your report - only your school admins can view them.
+            Uploaded privately with your report - delivered only to the developer.
           </span>
         )}
       </div>

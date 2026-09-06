@@ -115,16 +115,16 @@ raw grade rows.
 - **Upload validation** (`lib/uploadUtils.ts`): MIME whitelist, size caps,
   extension derived from MIME (with fallback), UUID file paths. Storage
   buckets are private with owner/school policies.
-- **Feedback attachments** (v1.7.66): files upload to the private
+- **Feedback is email-only (v1.28.0).** Files upload to the private
   `feedback` bucket at `{school_id}/{user_id}/{uuid}.ext` (storage RLS binds
   both folders), the API route re-validates every path against the caller's
-  own school/user folder before storing `feedback_reports`, and only
-  same-school admins can read objects back. The developer email gets signed,
-  expiring links - files are never public. Submissions require a signed-in
-  user and are always attributed; delivery goes to the `FEEDBACK_INBOX`
-  environment variable (never hardcoded, so the repo carries no personal
-  email addresses). An unset inbox still stores the report - only the email
-  leg is lost, loudly (server log + failure note in the API response).
+  own school/user folder, signs the objects server-side, and emails the
+  developer directly (`FEEDBACK_INBOX` env var - never hardcoded, so the
+  repo carries no personal email addresses). Reports are **not stored in the
+  database** and do not appear in any admin panel - the email is the only
+  delivery. Submissions require a signed-in user and are always attributed,
+  so there is no anonymous email path; a missing inbox or provider failure
+  returns an error rather than silently dropping the report.
 - **Signup anti-enumeration (v1.28.0).** Every "already exists" outcome -
   taken email, taken student ID, taken faculty ID (pre-checks and the
   database's unique indexes alike) - returns the exact same generic response
