@@ -657,6 +657,20 @@ Why this design?
   can't take a Tailwind `hover:` variant, so the text never changed color) was
   also replaced app-wide with `hover-bg-gold-token hover-text-on-accent`,
   which actually flips the label to dark on gold.
+- **Penpot Messages implementation (v1.28.0).** `components/chat/
+  MessengerView.tsx` was rebuilt to match the Penpot messaging frames
+  (student/teacher/admin share it): list header with segmented control
+  (All / Groups / Archived), desktop Archived pill with count, icon-only New
+  Chat button, All / Groups / Direct filter chips, 24px-icon pill search,
+  72px conversation rows (48px avatars, 10px meta timestamps, 20px accent
+  unread badges), corrected bubble tail radii (theirs bottom-right 4px,
+  mine bottom-left 4px per the design CSS), mono uppercase day separators,
+  icon-only 44px send button, and the New Chat dialog (centered 480px modal
+  with scrim on desktop, full-screen sheet + 56px accent FAB on mobile).
+  Groups/pin/typing/attach/call affordances from the design are deferred -
+  no backing data model or behavior exists yet (conversations are strict
+  1:1 pairs), so the Groups tab shows an honest empty state instead of dead
+  UI.
 - **Full-app visual + UX consistency audit (1.4.25).** A cross-app sweep
   closed the last gaps between the modernized reference pages and the
   remaining surfaces. All three native `window.confirm` dialogs were replaced
@@ -922,9 +936,17 @@ flat token dashboard look, but built on the same tokens and fonts):
 2. **Search** - `QuickSearchBar`: typing shows results; **clicking a result
    opens an in-place profile preview** (`ProfileModal`) without leaving the
    page; **Enter** goes to the full search results page.
-3. **Messaging** - `MessengerView` is shared across all roles: search people,
-   start/open threads, send, archive, delete (per-user), block, mark unread;
-   the nav shows an unread dot (`MessagesBadge`) until all threads are read.
+3. **Messaging** - `MessengerView` is shared across all roles (implemented
+   from the Penpot design in v1.28.0): conversation list with All / Groups /
+   Archived segmented control, All / Groups / Direct filter chips, archived
+   pill + New Chat button, and a searchable directory dialog (480px modal on
+   desktop, full-screen sheet plus FAB on mobile) to start threads; the chat
+   pane has role captions, the conversation options menu (mark unread,
+   archive, delete, block), and design-exact bubbles/day separators; send,
+   archive, delete (per-user), block, mark unread all work; the nav shows an
+   unread dot (`MessagesBadge`) until all threads are read. The Groups tab
+   renders an honest empty state - conversations are strict 1:1 pairs (no
+   group-thread backend yet).
 4. **Grades** - teacher submits (pending) -> admin approves/rejects -> approved
    grades flow to student stats and the leaderboard in realtime.
  5. **Habits** - a full personal habit tracker (`/student/habits`): five

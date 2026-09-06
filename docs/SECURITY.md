@@ -121,9 +121,42 @@ raw grade rows.
   own school/user folder before storing `feedback_reports`, and only
   same-school admins can read objects back. The developer email gets signed,
   expiring links - files are never public. Submissions require a signed-in
-  user and are always attributed; delivery goes to the developer's hardcoded
-  inbox (`FEEDBACK_INBOX` in `app/api/feedback/route.ts`), so there is no
-  anonymous email path.
+  user and are always attributed; delivery goes to the `FEEDBACK_INBOX`
+  environment variable (never hardcoded, so the repo carries no personal
+  email addresses). An unset inbox still stores the report - only the email
+  leg is lost, loudly (server log + failure note in the API response).
+- **Signup anti-enumeration (v1.28.0).** Every "already exists" outcome -
+  taken email, taken student ID, taken faculty ID (pre-checks and the
+  database's unique indexes alike) - returns the exact same generic response
+  (`"If the account is eligible, a confirmation email has been sent."`, no
+  field errors, same status). Which identifier is taken is logged
+  server-side only, so an attacker cannot probe for registered accounts via
+  signup responses.
+- **Cross-instance rate limiting (v1.28.0).** Abuse-sensitive open routes
+  are limited per IP through Upstash Redis (`lib/server/rateLimit.ts`), so
+  counters survive cold starts and hold across serverless instances - never
+  in process memory: signup **5/hour**, resend-confirmation **3/hour**,
+  music resolution **30/minute**. Exceeding a limit returns 429 with
+  `Retry-After`. Without the `UPSTASH_REDIS_REST_*` env vars the limiter
+  fails open with a loud server error - production must set them. Supabase
+  Auth's own rate limits are the second layer on the auth endpoints.
+- **Strict CSP with per-request nonce (v1.28.0).** `middleware.ts` issues a
+  fresh nonce on every request and sets the Content-Security-Policy on every
+  response. In production `script-src` is `'self' 'nonce-…' 'strict-dynamic'`
+  - **no `'unsafe-inline'` and no `'unsafe-eval'`**; the theme flash-guard
+  bootstrap script and Next.js's own inline scripts carry the nonce
+  (`'unsafe-inline'` stays only for `style-src`, which React style
+  attributes require). The CSP also fixes the Next.js middleware-bypass
+  class of issues outright: the app runs Next.js ≥ 14.2.25
+  (CVE-2025-29927), and the middleware's role/lifecycle redirects fire even
+  with forged `x-middleware-subrequest` headers.
+- **No version disclosure (v1.28.0).** `poweredByHeader: false` in
+  `next.config.js` - responses carry no `x-powered-by`.
+- **Checkout redirects fail closed (v1.28.0).** The PayMongo checkout
+  success/cancel URLs are built only from the deployment's `NEXT_PUBLIC_SITE_URL`
+  (`lib/siteUrl.ts`); the client-controlled `Origin` header is never used,
+  so a request cannot influence where a payment redirect lands. (Checkout
+  is currently disabled anyway - `PAYMENTS_ENABLED = false`.)
 - **No client-side Florin minting** - balance write policies were removed
   (migration 022) and money movement happens only inside guarded RPCs:
   `purchase_shop_item` debits, and the payment webhook's `complete_payment`
@@ -195,7 +228,11 @@ data.
 - **`NEXT_PUBLIC_SITE_URL` is required in production.** It is the base for
   email confirmation links and password recovery redirects. Without it,
   signup email confirmation cannot work in production (the signup bridge
-  rejects signup with a configuration error).
+  rejects signup with a configuration error) and checkout refuses to build
+  payment redirects.
+- **`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are required in
+  production.** Without them the per-route rate limiters fail open (see §4)
+  and an error is logged on the first request - a silent gap if forgotten.
 - **Non-secure contexts**: `crypto.randomUUID()` throws over plain HTTP on a
   LAN; `lib/randomId.ts` falls back to a safe random id so uploads and
   optimistic updates still work.
