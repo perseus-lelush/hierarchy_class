@@ -13,15 +13,15 @@
  */
 
 export const APK_RELEASE = {
-  version: "1.31.0",
-  versionCode: 131000,
+  version: "1.31.1",
+  versionCode: 131001,
   packageName: "com.hierarchyclass.app",
-  fileName: "hierarchy-class-v1.31.0.apk",
+  fileName: "hierarchy-class-v1.31.1.apk",
   /** Public path served from /public. */
-  publicPath: "/downloads/hierarchy-class-v1.31.0.apk",
-  sizeBytes: 7729685,
+  publicPath: "/downloads/hierarchy-class-v1.31.1.apk",
+  sizeBytes: 7730081,
   /** SHA-256 of the exact distributed binary. */
-  sha256: "44f8a8843a31b0cea2758513fb95334985295599f3ece5e242770f8930c8747a",
+  sha256: "f80b15d6e863f608cab81e20b6a933b35f084017df5e0d7a7a74ad9c89c734ab",
 } as const;
 
 export function apkDownloadUrl(): string {

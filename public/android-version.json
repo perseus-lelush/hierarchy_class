@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.31.0",
-  "versionCode": 131000,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.31.0.apk",
-  "releaseNotes": "Fixed the conversation options (three-dots) menu, and group owners can now edit the group name and cover photo from the same menu. Requires migrations 077 + 078 in Supabase.",
+  "latestVersion": "1.31.1",
+  "versionCode": 131001,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.31.1.apk",
+  "releaseNotes": "The three-dots menu now opens right under the button (was popping at the bottom of the screen), Edit group works on Android (bottom sheet), and saving a group edit no longer restarts the open chat.",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }

@@ -532,7 +532,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="relative flex items-center gap-2">
                 {!active.isGroup && !isBlocked && active.otherId && callStatus === "idle" && (
                   <button
                     type="button"
@@ -1112,6 +1112,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
       {editingGroup && active?.isGroup && (
         <EditGroupDialog
           conversation={active}
+          isMobile={isMobile}
           onClose={() => setEditingGroup(false)}
         />
       )}
@@ -1263,9 +1264,11 @@ function AddMembersDialog({
 
 function EditGroupDialog({
   conversation,
+  isMobile,
   onClose,
 }: {
   conversation: Conversation;
+  isMobile: boolean;
   onClose: () => void;
 }) {
   const { updateGroup, uploadGroupCover } = useChatStore();
@@ -1323,7 +1326,11 @@ function EditGroupDialog({
         aria-modal="true"
         aria-label="Edit group"
         onClick={(e) => e.stopPropagation()}
-        className="absolute left-1/2 top-1/2 flex max-h-[85vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl border border-base bg-surface p-5 shadow-xl"
+        className={
+          isMobile
+            ? "absolute inset-x-0 bottom-0 flex flex-col gap-4 rounded-t-2xl border-t border-base bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+            : "absolute left-1/2 top-1/2 flex max-h-[85vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl border border-base bg-surface p-5 shadow-xl"
+        }
       >
         <p className="text-base font-semibold text-navy">Edit group</p>
 

@@ -274,7 +274,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           (b.last_message_at || b.last_message || "").localeCompare(a.last_message_at || a.last_message || "")
         );
 
-      setConversations(visibleRows.map((r) => toConversation(r, myProfileId, unreadByConv[r.id] ?? 0)));
+      // Merge fresh rows into state WITHOUT wiping loaded history: a refetch
+      // (group edit, roster change, manual refresh) must not reset the open
+      // conversation's messages. Loaded messages/flags carry over.
+      setConversations(
+        visibleRows.map((r) => {
+          const fresh = toConversation(r, myProfileId, unreadByConv[r.id] ?? 0);
+          const existing = conversationsRef.current.find((c) => c.id === fresh.id);
+          if (!existing) return fresh;
+          return {
+            ...fresh,
+            messages: existing.messages.length > 0 ? existing.messages : fresh.messages,
+            messagesLoading: existing.messagesLoading,
+          };
+        })
+      );
       setBlocks(new Set(((blockRes.data ?? []) as any[]).map((b: any) => b.blocked_id)));
       setError(null);
       setLoading(false);
@@ -696,10 +710,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         console.error("[chat] updateGroup failed:", error.message);
         return error.message || "Couldn't update the group.";
       }
-      refetch();
+      // In-place update - a full refetch here used to reset the open chat.
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId ? { ...c, name: title.trim(), avatarUrl: coverUrl ?? c.avatarUrl } : c
+        )
+      );
       return null;
     },
-    [profile, refetch]
+    [profile]
   );
 
   const uploadGroupCover = useCallback(

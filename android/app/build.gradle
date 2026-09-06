@@ -17,8 +17,8 @@ android {
         applicationId "com.hierarchyclass.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 131000
-        versionName "1.31.0"
+        versionCode 131001
+        versionName "1.31.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
