@@ -23,6 +23,8 @@ import { InstallPromptCapture } from "@/components/pwa/InstallPrompt";
 import { NativeBackButton } from "@/components/native/NativeBackButton";
 import { NativeDeepLink } from "@/components/native/NativeDeepLink";
 import { AndroidUpdateChecker } from "@/components/pwa/AndroidUpdateChecker";
+import { CallProvider } from "@/lib/callStore";
+import { CallOverlay } from "@/components/chat/CallOverlay";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -99,10 +101,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body>
-        <MaterialsProvider>
-          <SchoolFeedProvider>
-            <StoriesProvider>
-              <NotificationsProvider>
+          <MaterialsProvider>
+            <CallProvider>
+              <SchoolFeedProvider>
+            <StoriesProvider>              <NotificationsProvider>
                 <QuizProvider>
                   <ChatProvider>
                     <LibraryProvider>
@@ -115,7 +117,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                             <ClassroomHierarchyProvider>
                               <TeacherTasksProvider>
                                 <RankProvider>
-                                  <FriendsProvider>{children}</FriendsProvider>
+                                  <FriendsProvider>
+                    {children}
+                    <CallOverlay />
+                  </FriendsProvider>
                                 </RankProvider>
                               </TeacherTasksProvider>
                             </ClassroomHierarchyProvider>
@@ -130,7 +135,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </QuizProvider>
                 </NotificationsProvider>
               </StoriesProvider>
-            </SchoolFeedProvider>
+              </SchoolFeedProvider>
+            </CallProvider>
           </MaterialsProvider>
         <ServiceWorkerRegistration />
         <InstallPromptCapture />
