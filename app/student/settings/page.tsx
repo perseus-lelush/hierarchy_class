@@ -10,6 +10,7 @@ import { useAccountRequests } from "@/lib/useAccountRequests";
 import { createClient } from "@/lib/supabase/client";
 import { deactivateAccount } from "@/lib/bridgeClient";
 import { APP_VERSION } from "@/lib/version";
+import { BetaBadge } from "@/components/ui/BetaBadge";
 import { backendUrl } from "@/lib/siteUrl";
 
 export default function SettingsPage() {
@@ -112,7 +113,7 @@ export default function SettingsPage() {
         {requestError && <p className="text-sm text-warn">{requestError}</p>}
       </section>
 
-      <p className="text-center text-xs text-muted">Hierarchy Class · v{APP_VERSION}</p>
+      <p className="flex items-center justify-center gap-2 text-center text-xs text-muted">Hierarchy Class · v{APP_VERSION} <BetaBadge /></p>
 
       {deactivateOpen && (
         <Modal eyebrow="Account" description="Temporarily disable your access" onClose={() => setDeactivateOpen(false)}>

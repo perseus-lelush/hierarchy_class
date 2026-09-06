@@ -13,6 +13,7 @@ import { useAccountRequests } from "@/lib/useAccountRequests";
 import { createClient } from "@/lib/supabase/client";
 import { deactivateAccount } from "@/lib/bridgeClient";
 import { APP_VERSION } from "@/lib/version";
+import { BetaBadge } from "@/components/ui/BetaBadge";
 import { backendUrl } from "@/lib/siteUrl";
 
 export default function TeacherSettingsPage() {
@@ -212,7 +213,7 @@ export default function TeacherSettingsPage() {
       )}
 
       <p className="pt-1 text-center font-mono-ui text-[10px] uppercase tracking-[0.2em] text-faint">
-        Hierarchy Class · v{APP_VERSION}
+        Hierarchy Class · v{APP_VERSION} <BetaBadge />
       </p>
     </div>
   );

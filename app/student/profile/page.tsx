@@ -11,7 +11,7 @@ import { Achievements } from "@/components/profile/Achievements";
 import { SeasonHistory } from "@/components/profile/SeasonHistory";
 import { StoryArchive } from "@/components/profile/StoryArchive";
 import { FriendsModal } from "@/components/profile/FriendsModal";
-import { IconMore, IconArchive, IconEye, IconStory } from "@/components/ui/icons";
+import { IconMore, IconArchive, IconEye, IconStory, IconUser } from "@/components/ui/icons";
 import { useMyProfile } from "@/lib/useMyProfile";
 import { useClassroomHierarchy } from "@/lib/classroomHierarchyStore";
 import { useFriendsStore } from "@/lib/friendsStore";
@@ -436,6 +436,51 @@ export default function StudentProfilePage() {
               <IconStory size={15} className="shrink-0 text-muted" />
               Story Archive
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFriendsOpen(true);
+                setMenuOpen(false);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm font-medium text-navy transition hover:bg-tile"
+            >
+              <IconUser size={15} className="shrink-0 text-muted" />
+              Manage friends
+            </button>
+            <div className="my-1.5 border-t border-base" />
+            <button
+              type="button"
+              onClick={() => {
+                void updateProfile({ profile_private: !profile?.profile_private });
+                setMenuOpen(false);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm font-medium text-navy transition hover:bg-tile"
+            >
+              <IconEye size={15} className={`shrink-0 ${profile?.profile_private ? "text-accent-token" : "text-muted"}`} />
+              {profile?.profile_private ? "Private profile: ON" : "Private profile: OFF"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void updateProfile({ friends_private: !profile?.friends_private });
+                setMenuOpen(false);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm font-medium text-navy transition hover:bg-tile"
+            >
+              <IconUser size={15} className={`shrink-0 ${profile?.friends_private ? "text-accent-token" : "text-muted"}`} />
+              {profile?.friends_private ? "Private friends: ON" : "Private friends: OFF"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void updateProfile({ history_private: !profile?.history_private });
+                setMenuOpen(false);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm font-medium text-navy transition hover:bg-tile"
+            >
+              <IconArchive size={15} className={`shrink-0 ${profile?.history_private ? "text-accent-token" : "text-muted"}`} />
+              {profile?.history_private ? "Private history: ON" : "Private history: OFF"}
+            </button>
           </div>
         </>
       )}
@@ -467,7 +512,7 @@ export default function StudentProfilePage() {
               {friends.slice(0, 8).map((friend) => (
                 <Link
                   key={friend.id}
-                  href={`/student/profile/${friend.id}`}
+                  href={`/student/profile/view?id=${friend.id}`}
                   className="flex shrink-0 flex-col items-center gap-1.5 transition active:scale-95"
                 >
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-tile p-[2px]">

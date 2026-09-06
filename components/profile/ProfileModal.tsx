@@ -12,13 +12,19 @@ import { useShop } from "@/lib/shopStore";
 import { EnrolledBadge } from "@/components/ui/EnrolledBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { RankBadge } from "@/components/ui/RankBadge";
+import { FriendActionButton } from "@/components/profile/FriendActionButton";
 import { registerBackHandler } from "@/lib/nativeBackHandler";
+import { IconLock } from "@/components/ui/icons";
 import type { ProfileRow } from "@/types/supabase";
 
 /**
  * Profile preview that opens in place (over the current page) when a person is
  * picked from a search result - the menu never changes. Full profile still
  * lives at /student/profile/[id] for deep links.
+ *
+ * Honors the target's profile_private flag: non-friend students get a
+ * limited card (name/avatar/role/rank + add-friend), mirroring the full
+ * profile view.
  */
 export function ProfileModal({ person, onClose }: { person: ProfileRow; onClose: () => void }) {
   const { profileCardOf } = useShop();
@@ -38,11 +44,14 @@ export function ProfileModal({ person, onClose }: { person: ProfileRow; onClose:
   const { getCoursesByTeacher } = useClassroomHierarchy();
   const identity = useAcademicIdentity(person.id);
   const { statuses } = useSchoolEnrollments();
-  const { friendIds, addFriend, removeFriend } = useFriendsStore();
+  const { friendIds } = useFriendsStore();
 
   const isStudent = person.role === "student";
   const isFriend = friendIds.includes(person.id);
   const isSelf = me?.id === person.id;
+  const viewerIsStaff = me?.role === "teacher" || me?.role === "admin";
+  const limitedView =
+    isStudent && !!person.profile_private && !isFriend && !viewerIsStaff && !isSelf;
   const coursesTaught = isStudent ? [] : getCoursesByTeacher(person.id);
   const viewedRank = isStudent ? rankOf(person.id) : null;
   const rank = viewedRank?.current_rank ?? "D";
@@ -60,9 +69,8 @@ export function ProfileModal({ person, onClose }: { person: ProfileRow; onClose:
 
   const hobbies = Array.isArray(person.hobbies) && person.hobbies.length > 0 ? person.hobbies : [];
 
-  function toggleFriend() {
-    if (isFriend) removeFriend(person.id);
-    else addFriend(person.id);
+  function handleMessage() {
+    router.push(`/${me?.role ?? "student"}/messages?with=${person.id}`);
   }
 
   return (
@@ -79,11 +87,9 @@ export function ProfileModal({ person, onClose }: { person: ProfileRow; onClose:
         >
           {!cardBg && <div className="absolute inset-0 bg-asphalt/50" />}
           {cardBg && <div className="cover-tint absolute inset-0" />}
-          <div className="absolute right-5 top-4 h-7 w-7 rounded-lg border border-line bg-tile/40" />
-          <div className="absolute bottom-3 left-8 h-3 w-14 rounded-full border border-line bg-tile/30" />
         </div>
 
-        <div className="px-6 pb-6">
+        <div className="px-5 pb-5 max-sm:px-4">
           <div className="-mt-10 flex flex-col items-center text-center">
             <UserAvatar
               name={person.full_name}
@@ -92,32 +98,16 @@ export function ProfileModal({ person, onClose }: { person: ProfileRow; onClose:
               className="border-2 border-surface"
               profileId={person.id}
             />
-            {/* Name + Message button on the SAME line - the action aligns with the name. */}
-            <div className="mt-3 flex w-full flex-wrap items-center justify-center gap-3">
-              <div className="min-w-0 text-center">
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <h2 className="truncate text-xl font-bold text-navy">{person.full_name}</h2>
-                  {isStudent && !isSelf && <EnrolledBadge status={enrollment} size="sm" />}
-                </div>
-                <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-accent">
-                  {isStudent ? "Student" : "Faculty"}
-                </p>
-                {isStudent && identityLine && <p className="mt-1 text-sm text-muted">{identityLine}</p>}
-                {person.favorite_subject && (
-                  <p className="mt-1.5 text-[12.5px] text-muted">
-                    <span className="font-semibold text-accent-token">Favorite subject:</span>{" "}
-                    {person.favorite_subject}
-                  </p>
-                )}
+            <div className="mt-3 flex flex-col items-center">
+              <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
+                <h2 className="break-words text-lg font-bold text-navy">{person.full_name}</h2>
+                {isStudent && !isSelf && <EnrolledBadge status={enrollment} size="sm" />}
               </div>
-              {!isSelf && (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/student/messages?with=${person.id}`)}
-                  className="shrink-0 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-white transition hover-bg-accent-token hover-text-on-accent"
-                >
-                  Message
-                </button>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-accent">
+                {isStudent ? "Student" : "Faculty"}
+              </p>
+              {!limitedView && isStudent && identityLine && (
+                <p className="mt-1 text-sm text-muted">{identityLine}</p>
               )}
             </div>
 
@@ -127,27 +117,39 @@ export function ProfileModal({ person, onClose }: { person: ProfileRow; onClose:
               </div>
             )}
 
-            {!person.bio && hobbies.length === 0 && (
-              <p className="mt-4 w-full text-left text-sm leading-6 text-muted">
-                {person.full_name.split(" ")[0]} hasn&apos;t added a bio or hobbies yet.
-              </p>
-            )}
-            {person.bio && <p className="mt-4 w-full text-left text-sm leading-6 text-muted">{person.bio}</p>}
-            {hobbies.length > 0 && (
-              <div className="mt-3 flex w-full flex-wrap justify-center gap-2">
-                {hobbies.map((h) => (
-                  <span
-                    key={h}
-                    className="rounded-full border border-line bg-tile px-2.5 py-0.5 text-[11px] text-muted"
-                  >
-                    {h}
-                  </span>
-                ))}
+            {limitedView ? (
+              <div className="mt-4 flex w-full flex-col items-center gap-2 rounded-[10px] border border-base bg-[var(--surface-strong)] px-4 py-5 text-center">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-accent-token">
+                  <IconLock size={16} />
+                </span>
+                <p className="text-sm font-semibold text-navy">Private profile</p>
+                <p className="text-xs text-muted">Add them as a friend to see more.</p>
               </div>
+            ) : (
+              <>
+                {!person.bio && hobbies.length === 0 && (
+                  <p className="mt-4 w-full text-left text-sm leading-6 text-muted">
+                    {person.full_name.split(" ")[0]} hasn&apos;t added a bio or hobbies yet.
+                  </p>
+                )}
+                {person.bio && <p className="mt-4 w-full text-left text-sm leading-6 text-muted">{person.bio}</p>}
+                {hobbies.length > 0 && (
+                  <div className="mt-3 flex w-full flex-wrap justify-center gap-2">
+                    {hobbies.map((h) => (
+                      <span
+                        key={h}
+                        className="rounded-full border border-line bg-tile px-2.5 py-0.5 text-[11px] text-muted"
+                      >
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {!isStudent && coursesTaught.length > 0 && (
+          {!limitedView && !isStudent && coursesTaught.length > 0 && (
             <div className="mt-4 border-t border-base pt-4 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-faint">Teaching</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -163,24 +165,32 @@ export function ProfileModal({ person, onClose }: { person: ProfileRow; onClose:
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-5 grid grid-cols-2 gap-2 max-sm:grid-cols-1">
             {isStudent && !isSelf && (
-              <button
-                type="button"
-                onClick={toggleFriend}
+              <FriendActionButton
+                targetId={person.id}
+                targetName={person.full_name}
+                isFriend={isFriend}
                 className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
                   isFriend
                     ? "border border-base bg-surface text-muted hover-border-warn-soft hover-text-warn"
                     : "bg-accent text-on-accent hover:opacity-90"
                 }`}
+              />
+            )}
+            {!isSelf && (
+              <button
+                type="button"
+                onClick={handleMessage}
+                className="rounded-full bg-navy px-4 py-2 text-xs font-semibold text-white transition hover-bg-accent-token hover-text-on-accent"
               >
-                {isFriend ? "Remove Friend" : "Add Friend"}
+                Message
               </button>
             )}
             <button
               type="button"
               onClick={() => router.push(`/student/profile/view?id=${person.id}`)}
-              className="rounded-full border border-base px-4 py-2 text-xs font-semibold text-navy transition hover:border-accent"
+              className="col-span-2 rounded-full border border-base px-4 py-2 text-xs font-semibold text-navy transition hover:border-accent max-sm:col-span-1"
             >
               View full profile
             </button>

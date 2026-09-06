@@ -8,6 +8,7 @@ import { TeacherBottomNav } from "@/components/navigation/TeacherBottomNav";
 import { AdminBottomNav } from "@/components/navigation/AdminBottomNav";
 import { DeviceWarning } from "@/components/navigation/DeviceWarning";
 import { PageBackdrop } from "@/components/dashboard/PageBackdrop";
+import { PullToRefresh } from "@/components/navigation/PullToRefresh";
 import { createClient } from "@/lib/supabase/client";
 import { isNativeApp } from "@/lib/native";
 
@@ -137,7 +138,11 @@ export function AppShell({
         <main
           className={`${MAIN_CLASSES[desktopAt]} ${pad.main} ${role === "student" ? "glass-cards" : ""}`}
         >
-          {children}
+          {role === "student" ? (
+            <PullToRefresh className="min-h-full">{children}</PullToRefresh>
+          ) : (
+            children
+          )}
         </main>
       </div>
 

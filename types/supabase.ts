@@ -40,6 +40,12 @@ export interface ProfileRow {
   interests: string[];
   is_librarian: boolean;
   avatar_url: string | null;
+  /** User privacy: other students see a limited profile card when true. */
+  profile_private: boolean;
+  /** User privacy: hides this user's friend list from other students. */
+  friends_private: boolean;
+  /** User privacy: hides this student's rank history from other students. */
+  history_private: boolean;
   deactivated_at: string | null;
   /** Set by a school admin to temporarily restrict a suspicious account.
    *  Distinct from deactivated_at (self-service). Restricted users can only

@@ -17,8 +17,12 @@ interface FriendsContextValue {
   friendIds: string[];
   loading: boolean;
   error: string | null;
-  addFriend: (profileId: string) => Promise<void>;
-  removeFriend: (profileId: string) => Promise<void>;
+  /** Manually re-fetch the friends list (pull-to-refresh). */
+  refetch: () => void;
+  /** Resolves to an error message on failure, null on success. */
+  addFriend: (profileId: string, fullName: string) => Promise<string | null>;
+  /** Resolves to an error message on failure, null on success. */
+  removeFriend: (profileId: string) => Promise<string | null>;
 }
 
 const FriendsContext = createContext<FriendsContextValue | null>(null);
@@ -84,39 +88,53 @@ export function FriendsProvider({ children }: { children: React.ReactNode }) {
 
   const refetch = useCallback(() => setRefetchTick((t) => t + 1), []);
 
+  const friendIds = friends.map((f) => f.id);
+
   const addFriend = useCallback(
-    async (profileId: string) => {
-      if (!profile) return;
+    async (profileId: string, fullName: string): Promise<string | null> => {
+      if (!profile) return "You're not signed in.";
+      if (friends.some((f) => f.id === profileId)) return null;
       const supabase = createClient();
-      await (supabase.from("friends") as any).insert({
+      const { error: insertError } = await (supabase.from("friends") as any).insert({
         school_id: profile.school_id,
         user_a_id: profile.id,
         user_b_id: profileId,
       });
+      if (insertError) {
+        if ((insertError as any).code === "23505") return null;
+        console.error("[friends] addFriend failed:", insertError.message);
+        return `Couldn't add ${fullName}. Please try again.`;
+      }
       refetch();
+      return null;
     },
-    [profile, refetch]
+    [profile, refetch, friends]
   );
 
   const removeFriend = useCallback(
-    async (profileId: string) => {
-      if (!profile) return;
+    async (profileId: string): Promise<string | null> => {
+      if (!profile) return "You're not signed in.";
       const supabase = createClient();
-      await supabase
+      const { error: deleteError } = await supabase
         .from("friends")
         .delete()
         .or(
           `and(user_a_id.eq.${profile.id},user_b_id.eq.${profileId}),and(user_a_id.eq.${profileId},user_b_id.eq.${profile.id})`
         );
+      if (deleteError) {
+        console.error("[friends] removeFriend failed:", deleteError.message);
+        return "Couldn't remove that friend. Please try again.";
+      }
       refetch();
+      return null;
     },
     [profile, refetch]
   );
 
-  const friendIds = friends.map((f) => f.id);
-
   return (
-    <FriendsContext.Provider value={{ friends, friendIds, loading, error, addFriend, removeFriend }}>
+    <FriendsContext.Provider
+      value={{ friends, friendIds, loading, error, refetch, addFriend, removeFriend }}
+    >
       {children}
     </FriendsContext.Provider>
   );

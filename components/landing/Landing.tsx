@@ -9,6 +9,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { AuthTabs } from "@/components/auth/AuthTabs";
 import { LandingBackground } from "./Background";
 import { APP_VERSION } from "@/lib/version";
+import { BetaBadge } from "@/components/ui/BetaBadge";
 import { usePlatformContext } from "@/lib/usePlatformContext";
 import { RANK_DISPLAY_NAMES } from "@/lib/rankEngine";
 
@@ -541,7 +542,7 @@ function Footer() {
         </a>
 
         <p className="text-[11.5px] text-[var(--faint)]">
-          © {new Date().getFullYear()} Hierarchy Class · v{APP_VERSION} · Make school feel like a game worth playing
+          © {new Date().getFullYear()} Hierarchy Class · v{APP_VERSION} · Make school feel like a game worth playing <BetaBadge />
         </p>
       </div>
     </footer>

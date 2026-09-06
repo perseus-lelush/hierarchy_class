@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useShop, type ShopItem } from "@/lib/shopStore";
+import { SHOP_ENABLED, SHOP_DISABLED_MESSAGE } from "@/lib/shopConfig";
 import { CoinIcon } from "@/components/ui/CoinIcon";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { PaymentHistory } from "@/components/student/PaymentHistory";
@@ -116,13 +117,27 @@ export default function ShopPage() {
         </p>
       </header>
 
-      {status && (
+      {!SHOP_ENABLED && (
+        <div className="flex flex-col items-center gap-3 rounded-[10px] border border-base bg-[var(--surface-strong)] px-6 py-12 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent-token">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1.6" />
+              <circle cx="19" cy="21" r="1.6" />
+              <path d="M2.5 3h2l2.4 12.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L22 7H5.6" />
+            </svg>
+          </span>
+          <p className="font-display text-lg font-bold text-navy">The shop is coming soon</p>
+          <p className="max-w-sm text-[13px] leading-6 text-muted">{SHOP_DISABLED_MESSAGE}</p>
+        </div>
+      )}
+
+      {SHOP_ENABLED && status && (
         <p className="rounded-lg border border-accent bg-accent/10 px-4 py-2.5 text-[13px] font-medium text-accent">
           {status}
         </p>
       )}
 
-      {loading ? (
+      {SHOP_ENABLED && (loading ? (
         <p className="text-sm text-muted">Loading the shop...</p>
       ) : error ? (
         <p className="text-sm text-warn">{error}</p>
@@ -251,12 +266,14 @@ export default function ShopPage() {
             cards, and avatar borders.
           </p>
         </>
-      )}
+      ))}
 
-      {/* Payment History Section */}
-      <section className="mt-8 pt-8 border-t border-base">
-        <PaymentHistory />
-      </section>
+      {SHOP_ENABLED && (
+        /* Payment History Section */
+        <section className="mt-8 pt-8 border-t border-base">
+          <PaymentHistory />
+        </section>
+      )}
 
     </div>
   );

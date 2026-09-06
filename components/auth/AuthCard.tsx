@@ -1,5 +1,6 @@
 import { LogoLockup } from "./LogoLockup";
 import { APP_VERSION } from "@/lib/version";
+import { BetaBadge } from "@/components/ui/BetaBadge";
 
 /**
  * Auth card shell used by every auth surface (landing section, login, signup,
@@ -42,7 +43,7 @@ export function AuthCard({ children }: { children: React.ReactNode }) {
             <div className="mt-7 flex items-center justify-center gap-2 border-t border-[var(--border)] pt-4">
               <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent-token/80" />
               <span className="font-mono-ui text-[10px] uppercase tracking-[0.18em] text-[var(--faint)]">
-                Realtime &middot; Secure &middot; v{APP_VERSION}
+                Realtime &middot; Secure &middot; v{APP_VERSION} <BetaBadge />
               </span>
             </div>
           </div>

@@ -11,7 +11,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: "com.hierarchyclass.app",
-  appName: "Hierarchy Class",
+  appName: "Hierarchy Class (Beta)",
   webDir: "out",
   android: {
     // Keep modern WebView defaults; no mixed content ever.

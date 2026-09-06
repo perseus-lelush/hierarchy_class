@@ -178,7 +178,7 @@ function AchievementDetail({
  * Achievements render as a compact 3 x 3 grid (9 initial, "Load More" for
  * more); each card opens the full premium detail view in a Modal.
  */
-export function Achievements({ studentId, viewer = false }: { studentId?: string; viewer?: boolean }) {
+export function Achievements({ studentId, viewer = false, historyPrivate = false }: { studentId?: string; viewer?: boolean; historyPrivate?: boolean }) {
   const { profile } = useMyProfile();
   const targetId = studentId ?? profile?.id;
   const { achievements, loading, error, create, remove } = useAchievements(targetId);
@@ -219,7 +219,7 @@ export function Achievements({ studentId, viewer = false }: { studentId?: string
     { key: "achievements" as const, label: "Achievements" },
     { key: "music" as const, label: "Music" },
     { key: "photos" as const, label: "Photos" },
-    { key: "history" as const, label: "History" },
+    ...(historyPrivate ? [] : [{ key: "history" as const, label: "History" }]),
   ];
 
   return (
@@ -262,7 +262,6 @@ export function Achievements({ studentId, viewer = false }: { studentId?: string
       {tab === "history" && (
         <HistoryTimeline studentId={targetId} viewer={viewer} />
       )}
-
       {tab === "achievements" && (
         <>
           {isOwner && profile && (

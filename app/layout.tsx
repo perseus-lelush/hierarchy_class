@@ -37,12 +37,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Hierarchy Class",
+  title: "Hierarchy Class (Beta)",
   description: "Make school feel like a game worth playing - gamified academic tracking for students, teachers, and campuses",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Hierarchy Class",
+    title: "Hierarchy Class (Beta)",
     statusBarStyle: "default",
   },
   icons: {
