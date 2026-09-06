@@ -125,6 +125,15 @@ raw grade rows.
   delivery. Submissions require a signed-in user and are always attributed,
   so there is no anonymous email path; a missing inbox or provider failure
   returns an error rather than silently dropping the report.
+- **Signup hardening round-2 (v1.30).** The duplicate-identifier regex also
+  catches GoTrue's "A user with this email already exists" wording; the
+  72-byte bcrypt password limit is enforced server-side and at both signup
+  forms (previously an opaque provider error); the Android bridge
+  (`/api/bridge/*`) answers CORS preflights for the app's own bundle origin
+  (`https://localhost`) and account routes authenticate via the device's
+  forwarded Supabase JWT - the Capacitor WebView holds no backend cookies,
+  so cookie-only auth silently broke deactivate/appeals/deletion there.
+  `bridgeClient` surfaces real 4xx/429 bodies instead of a generic string.
 - **Signup anti-enumeration (v1.28.0).** Every "already exists" outcome -
   taken email, taken student ID, taken faculty ID (pre-checks and the
   database's unique indexes alike) - returns the exact same generic response

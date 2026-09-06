@@ -8,7 +8,7 @@ enforces these rules on every request.
 
 ```
 database/
-  migrations/    One numbered SQL file per change, applied in order (001 -> 072)
+  migrations/    One numbered SQL file per change, applied in order (001 -> 076)
   README.md      This file
 ```
 
@@ -19,7 +19,7 @@ migration-tracking table - the files **are** the history, and each one is
 written to be **idempotent** (safe to re-run), so applying them is:
 
 1. Open your Supabase project -> **SQL Editor**.
-2. Run each file in numeric order (`001_...` -> `072_...`).
+2. Run each file in numeric order (`001_...` -> `076_...`).
 3. Re-running an already-applied file is safe (guards like
    `IF NOT EXISTS` / `DROP POLICY IF EXISTS` make it a no-op).
 

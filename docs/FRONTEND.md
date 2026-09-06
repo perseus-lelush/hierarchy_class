@@ -657,6 +657,15 @@ Why this design?
   can't take a Tailwind `hover:` variant, so the text never changed color) was
   also replaced app-wide with `hover-bg-gold-token hover-text-on-accent`,
   which actually flips the label to dark on gold.
+- **Beta round-2 (v1.30).** Signup reliability fixes from the production
+  investigation (Android CORS + JWT bridge auth, 429/JSON error fidelity,
+  duplicate-email regex, 72-byte password cap); Instagram-style StoryEditor
+  (caption, flip, color-pen drawing composited via canvas) before
+  publishing; display-name rename with a DB-enforced 30-day cooldown
+  (migration 076) in the About editor; friend add/remove confirmations and
+  the friends manager; private profile/friends/history toggles in the
+  profile menu; shared circle `Spinner`/`InlineLoader` across all loading
+  states; GitHub links moved to `perseus-lelush`.
 - **Penpot Messages implementation (v1.28.0).** `components/chat/
   MessengerView.tsx` was rebuilt to match the Penpot messaging frames
   (student/teacher/admin share it): list header with segmented control

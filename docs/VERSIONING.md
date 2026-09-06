@@ -37,7 +37,7 @@ The scheme is `MAJOR.MINOR.PATCH` (currently `1.Y.Z`):
 | Segment | When to bump | Examples |
 |---|---|---|
 | **MAJOR** | Reserved for a breaking platform overhaul (architecture/data-model resets). None shipped yet. | - |
-| **MINOR** | New user-facing features land. Reset PATCH to `0`. | `1.27.116 → 1.28.0` (Penpot Messages redesign) |
+| **MINOR** | New user-facing features land. Reset PATCH to `0`. | `1.28.0 → 1.29.0` (group chat + voice calls), `1.29.0 → 1.30.0` (story editor, renames, signup fixes) |
 | **PATCH** | Fixes, hardening, and cleanups with no new feature surface. | `1.27.115 → 1.27.116` |
 
 A release commit should cover everything that ships together - feature work

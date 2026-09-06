@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.29.0",
-  "versionCode": 129000,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.29.0.apk",
-  "releaseNotes": "Beta update: group chats, 1:1 voice calls, pull-to-refresh, friend management with confirmations, profile privacy (profile, friends, history), fixed profile messaging on mobile, and a beta badge. Shop is temporarily coming-soon.",
+  "latestVersion": "1.30.0",
+  "versionCode": 130000,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.30.0.apk",
+  "releaseNotes": "Beta fixes: signup reliability (CORS fix for the Android app, clearer errors), Instagram-style story editor, display-name rename with 30-day cooldown, friend management, profile privacy toggles, circle loading screens, and the Beta badge. Also enables group chat and 1:1 voice calls.",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }

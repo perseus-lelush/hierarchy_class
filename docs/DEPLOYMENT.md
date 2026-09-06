@@ -66,7 +66,7 @@ Level Security, Realtime, and file/image storage.
 
 - **PostgreSQL database** - all tables (profiles, habits, grades, rank
   state, shop, messages, etc.) live here. Schema changes ship as numbered
-  migrations in `database/migrations/` (currently up to **073**) and are
+  migrations in `database/migrations/` (currently up to **076**) and are
   applied to the project (SQL Editor or `psql`).
 - **Authentication** - Supabase Auth handles sign up / sign in / password
   reset. Email confirmation is mandatory: signup sends a confirmation link
