@@ -58,7 +58,36 @@ function contentSecurityPolicy(nonce: string): string {
   ].join("; ");
 }
 
+// The standalone Android (Capacitor) bundle runs on https://localhost and
+// calls the bridge API cross-origin. JSON POSTs trigger a CORS preflight,
+// which used to fail (no ACAO header) and made EVERY bridge call from the
+// app report "offline" even on full internet. These headers fix it - the
+// origin allowlist is only the app's own bundle origin, and the bridge
+// routes authenticate their callers anyway.
+const ANDROID_BUNDLE_ORIGIN = "https://localhost";
+const BRIDGE_PREFIX = "/api/bridge/";
+
+function corsHeaders(request: NextRequest): HeadersInit {
+  const origin = request.headers.get("origin");
+  return {
+    "Access-Control-Allow-Origin": origin === ANDROID_BUNDLE_ORIGIN ? ANDROID_BUNDLE_ORIGIN : "",
+    "Vary": "Origin",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
 export async function middleware(request: NextRequest) {
+  // CORS preflight for the Android bridge: answer directly with no auth work.
+  if (
+    request.method === "OPTIONS" &&
+    request.nextUrl.pathname.startsWith(BRIDGE_PREFIX) &&
+    request.headers.get("origin") === ANDROID_BUNDLE_ORIGIN
+  ) {
+    return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+  }
+
   // Per-request nonce (base64 so it is quote-safe inside the CSP header).
   // Set on the request itself so every NextResponse.next() created below -
   // including the one inside the Supabase cookie callback - forwards it.
@@ -69,6 +98,11 @@ export async function middleware(request: NextRequest) {
 
   let response = NextResponse.next({ request });
   response.headers.set("Content-Security-Policy", csp);
+
+  // Bridge responses always carry the CORS allowance for the Android bundle.
+  if (request.nextUrl.pathname.startsWith(BRIDGE_PREFIX) && request.headers.get("origin") === ANDROID_BUNDLE_ORIGIN) {
+    Object.entries(corsHeaders(request)).forEach(([k, v]) => response.headers.set(k, String(v)));
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -148,6 +182,9 @@ export async function middleware(request: NextRequest) {
     // exists for known roles - the profile check guarantees that here).
     const redirect = NextResponse.redirect(new URL(decision.to, request.url));
     redirect.headers.set("Content-Security-Policy", csp);
+    if (request.nextUrl.pathname.startsWith(BRIDGE_PREFIX) && request.headers.get("origin") === ANDROID_BUNDLE_ORIGIN) {
+      Object.entries(corsHeaders(request)).forEach(([k, v]) => redirect.headers.set(k, String(v)));
+    }
     return redirect;
   }
 

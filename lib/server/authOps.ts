@@ -214,8 +214,10 @@ export async function signUpWithProfile(input: SignUpInput): Promise<SignUpResul
     // Anti-enumeration: duplicates (school ID indexes, already-registered
     // email) return the same generic rejection as the pre-checks above -
     // never a reason that reveals which identifier exists. Detailed reason
-    // stays in the server log.
-    if (/duplicate key|already registered|user already/i.test(message)) {
+    // stays in the server log. Wording variants observed from GoTrue:
+    // "A user with this email already exists", "...has already been
+    // registered", "User already registered", plus DB "duplicate key".
+    if (/duplicate key|already registered|already exists|user already/i.test(message)) {
       return ENUMERATION_SAFE_REJECTION;
     }
     // Never return provider-internal error strings to the client.

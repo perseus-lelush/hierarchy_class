@@ -46,21 +46,38 @@ type DeletionResult =
  * POST to a bridge route. Returns the parsed body, or a plain `{ error }`
  * object for transport failures (offline, non-JSON, unexpected status) so
  * callers always receive their documented result shape.
+ *
+ * Error fidelity: a 429 carries a real, user-actionable message ("Too many
+ * signup attempts") - it is surfaced verbatim instead of a generic string.
+ * The offline message is reserved for genuine transport failures (the fetch
+ * threw); a 200 with an unparseable body is reported as a server error, not
+ * "offline" - a captive portal/HTML response used to masquerade as being
+ * offline.
  */
 async function postBridge<T>(path: string, body?: unknown): Promise<T | OpError> {
+  let res: Response;
   try {
-    const res = await fetch(backendUrl(path), {
+    res = await fetch(backendUrl(path), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body ?? {}),
     });
-    if (!res.ok) {
-      return { error: "Something went wrong. Please try again." };
-    }
-    return (await res.json()) as T;
   } catch {
     return { error: "You're offline or the server is unreachable. Please try again." };
   }
+  if (!res.ok) {
+    // The bridge returns { error } on rate limits / rejections - surface it.
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (data && typeof data.error === "string" && data.error) {
+      return { error: data.error };
+    }
+    return { error: `Something went wrong (server error ${res.status}). Please try again.` };
+  }
+  const parsed = await res.json().catch(() => null);
+  if (parsed === null) {
+    return { error: "The server sent an unexpected response. Please try again." };
+  }
+  return parsed as T;
 }
 
 export async function signUpWithProfile(input: SignUpInput): Promise<SignUpResult> {

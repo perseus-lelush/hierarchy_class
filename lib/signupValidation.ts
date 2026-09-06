@@ -73,10 +73,17 @@ export function isValidEmail(email: string): boolean {
   return EMAIL_RE.test(email.trim());
 }
 
-/** Strong-password policy: minimum length plus a mixture of letters and digits. */
+/** Strong-password policy: minimum length plus a mixture of letters and
+ *  digits. Maximum is 72 BYTES - bcrypt (GoTrue's hasher) truncates beyond
+ *  that, which used to surface as an opaque provider error at signup. */
+const MAX_PASSWORD_BYTES = 72;
+
 export function passwordPolicyError(password: string): string | null {
   if (password.length < MIN_PASSWORD_LENGTH) {
     return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) {
+    return "Password is too long (maximum 72 characters).";
   }
   if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
     return "Password must contain at least one letter and one number.";

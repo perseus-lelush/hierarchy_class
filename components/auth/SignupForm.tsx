@@ -314,6 +314,7 @@ export function SignupForm() {
         <input
           id="signup-password"
           type="password"
+          maxLength={72}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="At least 8 characters, with a letter and a number"
