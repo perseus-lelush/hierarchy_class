@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.27.116",
-  "versionCode": 127116,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.27.116.apk",
-  "releaseNotes": "Florin top-ups temporarily disabled (coming soon), stricter account security (restricted/deactivated accounts lose blanket API access), more reliable feedback and account deletion, music links now support Spotify playlists/albums/artists and are rate-limited, plus shop/chat/profile reliability fixes.",
+  "latestVersion": "1.28.0",
+  "versionCode": 128000,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.28.0.apk",
+  "releaseNotes": "New Messages experience (filters, new-chat dialog, design refresh) plus a major security update: Next.js 14.2.35 middleware-bypass fix (CVE-2025-29927), strict CSP with per-request nonces, signup anti-enumeration, and cross-instance rate limiting.",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }

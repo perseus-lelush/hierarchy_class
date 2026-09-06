@@ -64,9 +64,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // The theme bootstrap script below is the only hand-written inline script;
   // middleware issues a per-request nonce and Next.js automatically applies
   // the CSP's nonce to its own inline scripts. In the Android static export
-  // (no middleware/server) the nonce is absent and the script is emitted
-  // without one - Capacitor's local file serving doesn't enforce a CSP.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  // (no middleware/server) `headers()` is unavailable and reading it would
+  // break the static prerender of every page, so the nonce is skipped there -
+  // the script is emitted without one and Capacitor's local file serving
+  // doesn't enforce a CSP anyway.
+  const nonce =
+    process.env.NEXT_PUBLIC_CAPACITOR_EXPORT === "1"
+      ? undefined
+      : ((await headers()).get("x-nonce") ?? undefined);
   return (
     <html lang="en">
       <head>

@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useOnline } from "@/lib/useOnline";
 import { OfflineBanner } from "@/components/ui/OfflineBanner";
+import { registerBackHandler } from "@/lib/nativeBackHandler";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -160,7 +161,9 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [withId]);
 
-  // Escape closes the conversation options menu and the new-chat dialog.
+  // Escape closes the conversation options menu and the new-chat dialog; on
+  // Capacitor Android the hardware back button closes the dialog too (same
+  // contract as the shared Modal).
   useEffect(() => {
     if (!menuOpen && !newChatOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -170,14 +173,31 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
       }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const unregisterBack =
+      newChatOpen || menuOpen ? registerBackHandler(() => {
+        setMenuOpen(false);
+        setNewChatOpen(false);
+        return true;
+      }) : null;
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      unregisterBack?.();
+    };
   }, [menuOpen, newChatOpen]);
 
-  const active = list.find((c) => c.id === activeId) ?? conversations.find((c) => c.id === activeId) ?? null;
+  const active =
+    list.find((c) => c.id === activeId) ??
+    conversations.find((c) => c.id === activeId) ??
+    archivedConversations.find((c) => c.id === activeId) ??
+    null;
   const isBlocked = active ? blocks.has(active.otherId) : false;
 
-  // Scroll to the newest message, but only when the thread grows - never on
-  // unrelated re-renders, so the view stays stable while typing.
+  // Scroll to the newest message on conversation switch and whenever the
+  // thread grows - never on unrelated re-renders, so the view stays stable
+  // while typing.
+  useEffect(() => {
+    messageCountRef.current = -1;
+  }, [activeId]);
   useEffect(() => {
     const count = active?.messages.length ?? 0;
     if (count !== messageCountRef.current) {
@@ -229,6 +249,9 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   function setSegment(value: "all" | "groups" | "archived") {
     if (value === "archived") {
       setShowArchived(true);
+      // Archived is its own view - a stale Groups filter would make the
+      // archived list permanently empty, so the type chips reset to All.
+      setTypeFilter("all");
       return;
     }
     setShowArchived(false);
@@ -239,7 +262,9 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
     setActionError(null);
     setMenuOpen(false);
     setActiveId(id);
-    setShowArchived(false);
+    // Keep the archived view mounted: the fallbacks on `active` resolve
+    // archived conversations too, so the thread opens in place and its
+    // options menu (with "Move to inbox") stays reachable.
     await openConversation(id);
   }
 
@@ -268,6 +293,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
     setSending(false);
     if (ok) setDraft("");
     else if (!navigator.onLine) setActionError("You’re offline - message wasn’t sent.");
+    else setActionError("Message couldn't be sent - try again.");
   }
 
   return (
@@ -281,7 +307,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowArchived((v) => !v)}
+              onClick={() => setSegment(showArchived ? "all" : "archived")}
               className={`hidden rounded-full px-3 py-1 text-[11px] font-semibold transition md:block ${
                 showArchived ? "bg-[var(--surface-strong)] text-navy" : "text-muted hover:bg-[var(--surface-strong)] hover:text-navy"
               }`}
@@ -330,22 +356,24 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
           </div>
         </div>
 
-        <div className="flex gap-2 px-4 pb-3">
-          {TYPE_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setTypeFilter(f.key)}
-              className={`flex-1 rounded-full px-3.5 py-2 text-xs font-semibold transition ${
-                typeFilter === f.key
-                  ? "bg-accent-token text-on-accent"
-                  : "text-muted hover:bg-[var(--surface-strong)] hover:text-navy"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {!showArchived && (
+          <div className="flex gap-2 px-4 pb-3">
+            {TYPE_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setTypeFilter(f.key)}
+                className={`flex-1 rounded-full px-3.5 py-2 text-xs font-semibold transition ${
+                  typeFilter === f.key
+                    ? "bg-accent-token text-on-accent"
+                    : "text-muted hover:bg-[var(--surface-strong)] hover:text-navy"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto">
           {loading ? (

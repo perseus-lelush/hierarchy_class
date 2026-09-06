@@ -52,10 +52,25 @@ function limiterFor(prefix: string, max: number, windowSeconds: number): Ratelim
   return rl;
 }
 
+/**
+ * Best-effort caller IP. The deployment sits behind Cloudflare/Vercel, so
+ * their injected headers are trusted FIRST - the left-most `x-forwarded-for`
+ * entry is client-controlled (a fresh spoofed value per request would hand
+ * every request a fresh limiter bucket), and only the LAST XFF entry (added
+ * by the nearest trusted proxy) is usable as a fallback.
+ */
 export function clientIp(request: Request): string {
+  const cf = request.headers.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
+  const real = request.headers.get("x-real-ip")?.trim();
+  if (real) return real;
   const fwd = request.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim() || "unknown";
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  if (fwd) {
+    const entries = fwd.split(",").map((s) => s.trim()).filter(Boolean);
+    const nearestProxy = entries[entries.length - 1];
+    if (nearestProxy) return nearestProxy;
+  }
+  return "unknown";
 }
 
 export interface RateLimitResult {

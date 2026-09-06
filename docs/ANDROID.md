@@ -10,7 +10,7 @@
 > as the archive's reference and for the web PWA half (PWA manifest, service worker, offline
 > model, caching policy all still serve the website).
 
-> **Package:** `com.hierarchyclass.app` - **TWA build:** `1.15.90` (`versionCode 11590`, archived) - **Standalone build:** `1.27.116` (`versionCode 127116`) - **Web:** `1.28.0` (`package.json:version`)
+> **Package:** `com.hierarchyclass.app` - **TWA build:** `1.15.90` (`versionCode 11590`, archived) - **Standalone build:** `1.28.0` (`versionCode 128000`) - **Web:** `1.28.0` (`package.json:version`)
 > **PWA:** `public/manifest.json` + `public/sw.js` (vanilla, no Workbox) → **TWA via Bubblewrap** → APK/AAB
 
 This document is the single source for Android delivery, offline architecture, and PWA security. It reflects the actual implementation in `app/layout.tsx`, `public/manifest.json`, `public/sw.js`, `middleware.ts`, `android/twa-manifest.json`, and `public/.well-known/assetlinks.json`.
