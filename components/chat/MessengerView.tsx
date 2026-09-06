@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useChatStore, ChatRole } from "@/lib/chatStore";
+import { useChatStore, ChatRole, type Conversation } from "@/lib/chatStore";
 import { useSchoolProfiles } from "@/lib/useSchoolProfiles";
 import { useMyProfile } from "@/lib/useMyProfile";
 import type { ProfileRow } from "@/types/supabase";
@@ -111,6 +111,8 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
     unblockUser,
     createGroup,
     addGroupMembers,
+    updateGroup,
+    uploadGroupCover,
     leaveGroup,
   } = useChatStore();
   const { profiles: people, loading: peopleLoading } = useSchoolProfiles();
@@ -133,6 +135,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   const [groupMemberIds, setGroupMemberIds] = useState<Set<string>>(new Set());
   const [groupError, setGroupError] = useState<string | null>(null);
   const [addingMembers, setAddingMembers] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(false);
   const openingWith = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messageCountRef = useRef(0);
@@ -177,7 +180,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
   // Capacitor Android the hardware back button closes the dialog too (same
   // contract as the shared Modal).
   useEffect(() => {
-    if (!menuOpen && !newChatOpen && !creatingGroup && !addingMembers) return;
+    if (!menuOpen && !newChatOpen && !creatingGroup && !addingMembers && !editingGroup) return;
     const closeAll = () => {
       setMenuOpen(false);
       setNewChatOpen(false);
@@ -189,7 +192,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
     };
     window.addEventListener("keydown", onKey);
     const unregisterBack =
-      newChatOpen || menuOpen || creatingGroup || addingMembers
+      newChatOpen || menuOpen || creatingGroup || addingMembers || editingGroup
         ? registerBackHandler(() => {
             closeAll();
             return true;
@@ -199,7 +202,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
       window.removeEventListener("keydown", onKey);
       unregisterBack?.();
     };
-  }, [menuOpen, newChatOpen, creatingGroup, addingMembers]);
+  }, [menuOpen, newChatOpen, creatingGroup, addingMembers, editingGroup]);
 
   async function handleCreateGroup() {
     const title = groupTitle.trim();
@@ -552,110 +555,123 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
                   className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition hover:bg-[var(--surface-strong)] hover:text-navy"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="5" cy="12" r="1.8" />
-                      <circle cx="12" cy="12" r="1.8" />
-                      <circle cx="19" cy="12" r="1.8" />
-                    </svg>
-                  </button>
-                  {menuOpen && (
-                    <>
-                      <button type="button" aria-label="Close menu" className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuOpen(false)} />
-                      <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-2xl border border-base bg-surface py-1.5 shadow-xl">
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="5" cy="12" r="1.8" />
+                    <circle cx="12" cy="12" r="1.8" />
+                    <circle cx="19" cy="12" r="1.8" />
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <>
+                    <button type="button" aria-label="Close menu" className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuOpen(false)} />
+                    <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-2xl border border-base bg-surface py-1.5 shadow-xl">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setMenuOpen(false); markUnread(active.id); }}
+                        className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
+                      >
+                        Mark as unread
+                      </button>
+                      {active.archived || showArchived ? (
                         <button
                           type="button"
                           role="menuitem"
-                          onClick={() => { setMenuOpen(false); markUnread(active.id); }}
+                          onClick={() => { setMenuOpen(false); unarchiveConversation(active.id); }}
                           className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
                         >
-                          Mark as unread
+                          Move to inbox
                         </button>
-                        {active.archived || showArchived ? (
+                      ) : (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => { setMenuOpen(false); archiveConversation(active.id); setActiveId(null); }}
+                          className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
+                        >
+                          Archive
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setConfirming("hide");
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-left text-[13px] text-warn transition hover:bg-[var(--surface-strong)]"
+                      >
+                        {active.isGroup ? "Delete group for me" : "Delete conversation"}
+                      </button>
+                      <div className="my-1 border-t border-base" />
+                      {active.isGroup ? (
+                        <>
+                          {active.isOwner && (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setMenuOpen(false);
+                                setEditingGroup(true);
+                              }}
+                              className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
+                            >
+                              Edit group
+                            </button>
+                          )}
+                          {active.isOwner && (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setMenuOpen(false);
+                                setAddingMembers(true);
+                              }}
+                              className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
+                            >
+                              Add members
+                            </button>
+                          )}
                           <button
                             type="button"
                             role="menuitem"
-                            onClick={() => { setMenuOpen(false); unarchiveConversation(active.id); }}
-                            className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
+                            onClick={async () => {
+                              setMenuOpen(false);
+                              const err = await leaveGroup(active.id);
+                              if (err) setActionError(err);
+                              else setActiveId(null);
+                            }}
+                            className="flex w-full items-center px-4 py-2 text-left text-[13px] text-warn transition hover:bg-[var(--surface-strong)]"
                           >
-                            Move to inbox
+                            Leave group
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => { setMenuOpen(false); archiveConversation(active.id); setActiveId(null); }}
-                            className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
-                          >
-                            Archive
-                          </button>
-                        )}
+                        </>
+                      ) : isBlocked ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => { setMenuOpen(false); unblockUser(active.otherId); }}
+                          className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
+                        >
+                          Unblock {active.name.split(" ")[0]}
+                        </button>
+                      ) : (
                         <button
                           type="button"
                           role="menuitem"
                           onClick={() => {
                             setMenuOpen(false);
-                            setConfirming("hide");
+                            setConfirming("block");
                           }}
                           className="flex w-full items-center px-4 py-2 text-left text-[13px] text-warn transition hover:bg-[var(--surface-strong)]"
                         >
-                          {active.isGroup ? "Delete group for me" : "Delete conversation"}
+                          Block {active.name.split(" ")[0]}
                         </button>
-                        <div className="my-1 border-t border-base" />
-                        {active.isGroup ? (
-                          <>
-                            {active.isOwner && (
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={() => {
-                                  setMenuOpen(false);
-                                  setAddingMembers(true);
-                                }}
-                                className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
-                              >
-                                Add members
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={async () => {
-                                setMenuOpen(false);
-                                const err = await leaveGroup(active.id);
-                                if (err) setActionError(err);
-                                else setActiveId(null);
-                              }}
-                              className="flex w-full items-center px-4 py-2 text-left text-[13px] text-warn transition hover:bg-[var(--surface-strong)]"
-                            >
-                              Leave group
-                            </button>
-                          </>
-                        ) : isBlocked ? (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => { setMenuOpen(false); unblockUser(active.otherId); }}
-                            className="flex w-full items-center px-4 py-2 text-left text-[13px] text-navy transition hover:bg-[var(--surface-strong)]"
-                          >
-                            Unblock {active.name.split(" ")[0]}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setMenuOpen(false);
-                              setConfirming("block");
-                            }}
-                            className="flex w-full items-center px-4 py-2 text-left text-[13px] text-warn transition hover:bg-[var(--surface-strong)]"
-                          >
-                            Block {active.name.split(" ")[0]}
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1092,6 +1108,14 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
         </div>
       )}
 
+      {/* Edit group dialog (owner only): rename + cover photo */}
+      {editingGroup && active?.isGroup && (
+        <EditGroupDialog
+          conversation={active}
+          onClose={() => setEditingGroup(false)}
+        />
+      )}
+
       {/* Add members dialog (group owner only) */}
       {addingMembers && active?.isGroup && (
         <AddMembersDialog
@@ -1230,6 +1254,130 @@ function AddMembersDialog({
             className="flex-1 rounded-full border border-base py-2.5 text-sm font-semibold text-navy transition hover:border-accent"
           >
             Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditGroupDialog({
+  conversation,
+  onClose,
+}: {
+  conversation: Conversation;
+  onClose: () => void;
+}) {
+  const { updateGroup, uploadGroupCover } = useChatStore();
+  const [title, setTitle] = useState(conversation.name);
+  const [coverPreview, setCoverPreview] = useState<string | null>(conversation.avatarUrl);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Invalidate the object URL when the preview changes or on unmount.
+  useEffect(() => {
+    return () => {
+      if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
+
+  function pickCover(file: File) {
+    if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function save() {
+    const cleanTitle = title.trim();
+    if (!cleanTitle) {
+      setErrorText("Group name cannot be empty.");
+      return;
+    }
+    setBusy(true);
+    setErrorText(null);
+    let coverUrl = conversation.avatarUrl;
+    if (coverFile) {
+      const uploaded = await uploadGroupCover(conversation.id, coverFile);
+      if (!uploaded) {
+        setBusy(false);
+        setErrorText("Couldn't upload the cover photo. Try a smaller JPG/PNG.");
+        return;
+      }
+      coverUrl = uploaded;
+    }
+    const err = await updateGroup(conversation.id, cleanTitle, coverUrl);
+    setBusy(false);
+    if (err) {
+      setErrorText(err);
+      return;
+    }
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60" onClick={onClose} role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit group"
+        onClick={(e) => e.stopPropagation()}
+        className="absolute left-1/2 top-1/2 flex max-h-[85vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl border border-base bg-surface p-5 shadow-xl"
+      >
+        <p className="text-base font-semibold text-navy">Edit group</p>
+
+        {/* Penpot Group Identity: photo tile + name input */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-base bg-[var(--surface-strong)]"
+            title="Change cover photo"
+          >
+            {coverPreview ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={coverPreview} alt="Group cover" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-muted">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </span>
+            )}
+            <span className="absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[8px] font-bold uppercase tracking-wide text-white">
+              Edit
+            </span>
+          </button>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Group name..."
+            maxLength={80}
+            className="h-[38px] min-w-0 flex-1 rounded-full border border-base bg-[var(--bg)] px-4 text-sm text-navy placeholder:text-muted outline-none focus:border-accent"
+          />
+        </div>
+
+        {errorText && <p className="text-xs text-warn">{errorText}</p>}
+
+        <div className="mt-auto flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-full border border-base py-2.5 text-sm font-semibold text-navy transition hover:border-accent"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={busy || !title.trim()}
+            className="flex-1 rounded-full bg-navy py-2.5 text-sm font-semibold text-white transition hover-bg-accent-token hover-text-on-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

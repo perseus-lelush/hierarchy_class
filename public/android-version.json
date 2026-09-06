@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.30.3",
-  "versionCode": 130003,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.30.3.apk",
-  "releaseNotes": "Group creation fixed (database constraint) with the full Penpot design: group type selector (School/Friends), member chips, and any-character group names. Requires the 077 migration - apply it in Supabase first.",
+  "latestVersion": "1.31.0",
+  "versionCode": 131000,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.31.0.apk",
+  "releaseNotes": "Fixed the conversation options (three-dots) menu, and group owners can now edit the group name and cover photo from the same menu. Requires migrations 077 + 078 in Supabase.",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }

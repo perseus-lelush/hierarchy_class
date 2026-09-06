@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useCallback, useMemo, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useMyProfile } from "@/lib/useMyProfile";
+import { validateUpload, extensionForMime } from "@/lib/uploadUtils";
+import { randomId } from "@/lib/randomId";
 
 export type ChatRole = "student" | "teacher" | "admin";
 
@@ -69,6 +71,14 @@ interface ChatContextValue {
   ) => Promise<{ id?: string; error?: string }>;
   /** Group owner adds members. Resolves an error string or null. */
   addGroupMembers: (conversationId: string, memberIds: string[]) => Promise<string | null>;
+  /** Group owner renames the group / sets or clears its cover photo. */
+  updateGroup: (
+    conversationId: string,
+    title: string,
+    coverUrl: string | null
+  ) => Promise<string | null>;
+  /** Uploads a group cover image to the chat-covers bucket, returns its public URL. */
+  uploadGroupCover: (conversationId: string, file: File) => Promise<string | null>;
   /** Any member can leave a group. Resolves an error string or null. */
   leaveGroup: (conversationId: string) => Promise<string | null>;
   refetch: () => void;
@@ -669,6 +679,53 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [profile, refetch]
   );
 
+  const updateGroup = useCallback(
+    async (
+      conversationId: string,
+      title: string,
+      coverUrl: string | null
+    ): Promise<string | null> => {
+      if (!profile) return "You're not signed in.";
+      const supabase = createClient();
+      const { error } = await (supabase as any).rpc("update_chat_group", {
+        p_conversation_id: conversationId,
+        p_title: title,
+        p_cover_url: coverUrl,
+      });
+      if (error) {
+        console.error("[chat] updateGroup failed:", error.message);
+        return error.message || "Couldn't update the group.";
+      }
+      refetch();
+      return null;
+    },
+    [profile, refetch]
+  );
+
+  const uploadGroupCover = useCallback(
+    async (conversationId: string, file: File): Promise<string | null> => {
+      if (!profile) return null;
+      const validationError = validateUpload(file, "image");
+      if (validationError) {
+        console.error("[chat] cover validation failed:", validationError);
+        return null;
+      }
+      const supabase = createClient();
+      const ext = extensionForMime(file.type) ?? "jpg";
+      const path = `${profile.school_id}/${conversationId}/${randomId()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("chat-covers")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) {
+        console.error("[chat] cover upload failed:", error.message);
+        return null;
+      }
+      const { data } = supabase.storage.from("chat-covers").getPublicUrl(path);
+      return data?.publicUrl ?? null;
+    },
+    [profile]
+  );
+
   const leaveGroup = useCallback(
     async (conversationId: string): Promise<string | null> => {
       if (!profile) return "You're not signed in.";
@@ -707,6 +764,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       unblockUser,
       createGroup,
       addGroupMembers,
+      updateGroup,
+      uploadGroupCover,
       leaveGroup,
       refetch,
     }),
@@ -727,6 +786,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       unblockUser,
       createGroup,
       addGroupMembers,
+      updateGroup,
+      uploadGroupCover,
       leaveGroup,
       refetch,
     ]
