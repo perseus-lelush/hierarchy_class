@@ -444,14 +444,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                 }`}
               >
                 {c.isGroup ? (
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-base bg-[var(--surface-strong)] text-muted">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  </span>
+                  <GroupAvatarTile name={c.name} coverUrl={c.avatarUrl} />
                 ) : (
                   <UserAvatar name={c.name} src={c.avatarUrl} size="lg" profileId={c.otherId} />
                 )}
@@ -507,14 +500,7 @@ export function MessengerView({ role: _role }: { role: ChatRole }) {
                 </button>
               )}
               {active.isGroup ? (
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-base bg-[var(--surface-strong)] text-muted">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </span>
+                <GroupAvatarTile name={active.name} coverUrl={active.avatarUrl} />
               ) : (
                 <UserAvatar name={active.name} src={active.avatarUrl} size="lg" profileId={active.otherId} />
               )}
@@ -1389,5 +1375,30 @@ function EditGroupDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+
+/** Group avatar: the cover photo when set, otherwise the group icon tile. */
+function GroupAvatarTile({ name, coverUrl }: { name: string; coverUrl: string | null }) {
+  if (coverUrl) {
+    /* eslint-disable-next-line @next/next/no-img-element */
+    return (
+      <img
+        src={coverUrl}
+        alt={name}
+        className="h-12 w-12 shrink-0 rounded-full border border-base object-cover"
+      />
+    );
+  }
+  return (
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-base bg-[var(--surface-strong)] text-muted">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    </span>
   );
 }

@@ -10,7 +10,7 @@
 > as the archive's reference and for the web PWA half (PWA manifest, service worker, offline
 > model, caching policy all still serve the website).
 
-> **Package:** `com.hierarchyclass.app` - **TWA build:** `1.15.90` (`versionCode 11590`, archived) - **Standalone build:** `1.31.1` (`versionCode 131001`) - **Web:** `1.31.1` (`package.json:version`)
+> **Package:** `com.hierarchyclass.app` - **TWA build:** `1.15.90` (`versionCode 11590`, archived) - **Standalone build:** `1.31.2` (`versionCode 131002`) - **Web:** `1.31.2` (`package.json:version`)
 > **PWA:** `public/manifest.json` + `public/sw.js` (vanilla, no Workbox) → **TWA via Bubblewrap** → APK/AAB
 
 This document is the single source for Android delivery, offline architecture, and PWA security. It reflects the actual implementation in `app/layout.tsx`, `public/manifest.json`, `public/sw.js`, `middleware.ts`, `android/twa-manifest.json`, and `public/.well-known/assetlinks.json`.
@@ -133,7 +133,7 @@ Middleware `matcher` excludes `sw.js`, `manifest.json`, `offline` (and should al
 
 **App name:** `Hierarchy Class` (`android/twa-manifest.json:4` `name`, `launcherName`)
 
-**Version:** `package.json:version` (`1.31.1`) is the web release version (see [VERSIONING.md](./VERSIONING.md) for bump rules). The Android shell tracks it only at native-build time: `android/twa-manifest.json` `appVersion:1.15.90` `appVersionCode:11590` (`major*10000 + minor*100 + patch`). The archived TWA shell was built at 1.27.116 (versionCode 127116).
+**Version:** `package.json:version` (`1.31.2`) is the web release version (see [VERSIONING.md](./VERSIONING.md) for bump rules). The Android shell tracks it only at native-build time: `android/twa-manifest.json` `appVersion:1.15.90` `appVersionCode:11590` (`major*10000 + minor*100 + patch`). The archived TWA shell was built at 1.27.116 (versionCode 127116).
 
 **Host:** `www.hierarchyclass.com` - **PRODUCTION** (Vercel). Set in `android/twa-manifest.json` `host`, `iconUrl`, `maskableIconUrl`, `monochromeIconUrl`, `webManifestUrl`, `fullScopeUrl`. The TWA scope is restricted to this host only.
 

@@ -1,8 +1,8 @@
 {
-  "latestVersion": "1.31.1",
-  "versionCode": 131001,
-  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.31.1.apk",
-  "releaseNotes": "The three-dots menu now opens right under the button (was popping at the bottom of the screen), Edit group works on Android (bottom sheet), and saving a group edit no longer restarts the open chat.",
+  "latestVersion": "1.31.2",
+  "versionCode": 131002,
+  "downloadUrl": "https://www.hierarchyclass.com/downloads/hierarchy-class-v1.31.2.apk",
+  "releaseNotes": "Group cover photos now actually display - the saved cover renders in the conversation list and chat header (previously the upload saved but the UI still showed the default icon).",
   "minimumSupportedVersion": "1.24.111",
   "minimumVersionCode": 124111
 }
